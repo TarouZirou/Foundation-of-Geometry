@@ -95,7 +95,7 @@ lemma exists_second_point_on_line [h : IncidentAxioms Γ] {A : Γ.Point} {l : Γ
 lemma inplane_iff {l : Γ.Line} {α : Γ.Plane} : l ⊂ α ↔ ∀ (A : Γ.Point), A ∈ l → A ∈ α := by
   simp
 
-theorem T₁_line [hΓ : IncidentAxioms Γ] {l m : Γ.Line} :
+theorem T₁_₁ [hΓ : IncidentAxioms Γ] {l m : Γ.Line} :
   l ≠ m → (∃ (α : Γ.Plane), l ⊂ α ∧ m ⊂ α) →
     ∀ (A B : Γ.Point), A ∈ l → B ∈ l → A ∈ m → B ∈ m → A = B := by
   intro hlm h_ex_plane A B hAl hBl hAm hBm
@@ -103,7 +103,7 @@ theorem T₁_line [hΓ : IncidentAxioms Γ] {l m : Γ.Line} :
   have h₁ := hΓ.I2 hAB hAl hBl hAm hBm
   exact hlm h₁
 
-theorem T₁_plane [hΓ : IncidentAxioms Γ] {α β : Γ.Plane} :
+theorem T₁_₂ [hΓ : IncidentAxioms Γ] {α β : Γ.Plane} :
   α ≠ β → (∃ (A : Γ.Point), A ∈ α ∧ A ∈ β) → ∃ (l : Γ.Line), l ⊂ α ∧ l ⊂ β := by
   intro hαβ hAαβ
   rcases hAαβ with ⟨A, hAα, hAβ⟩
@@ -116,7 +116,7 @@ theorem T₁_plane [hΓ : IncidentAxioms Γ] {α β : Γ.Plane} :
   have h₄ := hΓ.I5 hAl hBl hAβ hBβ
   exact ⟨h₃, h₄⟩
 
-theorem T₁_line_plane [hΓ : IncidentAxioms Γ] {l : Γ.Line} {α : Γ.Plane} :
+theorem T₁_₃ [hΓ : IncidentAxioms Γ] {l : Γ.Line} {α : Γ.Plane} :
   l ⊄ α → ∀ (A B : Γ.Point), A ∈ l → B ∈ l → A ∈ α → B ∈ α → A = B := by
     intro hnlα A B hAl hBl hAα hBα
     by_contra hAB
@@ -179,6 +179,8 @@ theorem T₂_₂ [hΓ : IncidentAxioms Γ] {l m : Γ.Line} :
       have hBβ := hlβ B hBl
       have hCβ := hmβ C hCm
       exact hΓ.I4 h₁ hAβ hBβ hCβ hAα hBα hCα
+
+
 
 end Geometry
 
