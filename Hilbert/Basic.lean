@@ -22,7 +22,7 @@ structure Geometry where
 namespace Geometry
 
 variable {Γ : Geometry}
-  (A B C D E F G : Γ.Point) (l m n : Γ.Line) (α β γ : Γ.Plane)
+  {A B C D E F G : Γ.Point} {l m n : Γ.Line} {α β γ : Γ.Plane}
 
 
 abbrev onLine (A : Γ.Point) (l : Γ.Line) : Prop := Γ.OnLine A l
@@ -55,16 +55,16 @@ def Col (A B C : Γ.Point) : Prop :=
   ∃ l : Γ.Line, (A ∈ l) ∧ (B ∈ l) ∧ (C ∈ l)
 
 @[simp]
-def PointDistinct3 : Prop :=
+def PointDistinct3 (A B C : Γ.Point) : Prop :=
   A ≠ B ∧ B ≠ C ∧ A ≠ C
 
 @[simp]
-def PointDistinct4 : Prop :=
+def PointDistinct4 (A B C D : Γ.Point) : Prop :=
   A ≠ B ∧ A ≠ C ∧ A ≠ D ∧
   B ≠ C ∧ B ≠ D ∧
   C ≠ D
 
-def Cop : Prop :=
+def Cop (A B C D : Γ.Point) : Prop :=
   ∃ (α : Γ.Plane), (A ∈ α) ∧ (B ∈ α) ∧ (C ∈ α) ∧ (D ∈ α)
 
 class IncidentAxioms (Γ : Geometry) where
@@ -196,6 +196,8 @@ theorem T₂_₂ [hΓ : IncidentAxioms Γ] {l m : Γ.Line} :
     have hCβ := hmβ C hCm
     have hnCol := L₂ hnAB hAl hBl hnCl
     exact hΓ.I₅ hnCol hAβ hBβ hCβ hAα hBα hCα
+
+class OrderAxioms (Γ : Geometry) where
 
 class AxiomOfParallelLine (Γ : Geometry) where
   III : ∀ {A} {l : Γ.Line} {α : Γ.Plane},
