@@ -41,12 +41,24 @@ abbrev inPlane (l : Γ.Line) (α : Γ.Plane) : Prop := Γ.LineInPlane l α
 notation:50 l:50 " ⊂ " α:50 => inPlane l α
 notation:50 l:50 " ⊄ " α:50 => ¬inPlane l α
 
+abbrev Segment := Γ.Point × Γ.Point
+abbrev inSegment (A : Γ.Point) (l : Segment) := Γ.Bet l.1 A l.2
+notation:50 A:50 " ∈ " l:50 => inSegment A l
+notation:50 A:50 " ∉ " l:50 => ¬inSegment A l
+
+@[simp]
+def Parallel (l m : Γ.Line) : Prop := (∃ α, (l ⊂ α ∧ m ⊂ α)) ∧ ¬∃ A, A ∈ l ∧ A ∈ m
+notation:50 l:50 " ∥ " m:50 => Parallel l m
+notation:50 l:50 " ∦ " m:50 => ¬Parallel l m
+
 def Col (A B C : Γ.Point) : Prop :=
   ∃ l : Γ.Line, (A ∈ l) ∧ (B ∈ l) ∧ (C ∈ l)
 
+@[simp]
 def PointDistinct3 : Prop :=
   A ≠ B ∧ B ≠ C ∧ A ≠ C
 
+@[simp]
 def PointDistinct4 : Prop :=
   A ≠ B ∧ A ≠ C ∧ A ≠ D ∧
   B ≠ C ∧ B ≠ D ∧
@@ -56,130 +68,139 @@ def Cop : Prop :=
   ∃ (α : Γ.Plane), (A ∈ α) ∧ (B ∈ α) ∧ (C ∈ α) ∧ (D ∈ α)
 
 class IncidentAxioms (Γ : Geometry) where
-  I1 :
-    ∀ {A B : Γ.Point}, A ≠ B → ∃ (l : Γ.Line), (A ∈ l) ∧ (B ∈ l)
-  I2 :
-    ∀ {A B : Γ.Point} {l m : Γ.Line},
-      A ≠ B → A ∈ l → B ∈ l → A ∈ m → B ∈ m → l = m
-  I3 :
-    ∀ {A B C : Γ.Point}, ¬Col A B C → ∃ (α : Γ.Plane), A ∈ α ∧ B ∈ α ∧ C ∈ α
-  I4 :
-    ∀ {A B C : Γ.Point} {α β : Γ.Plane},
-      ¬Col A B C → A ∈ α → B ∈ α → C ∈ α → A ∈ β → B ∈ β → C ∈ β → α = β
-  I5 :
-    ∀ {A B : Γ.Point} {l : Γ.Line} {α : Γ.Plane},
-      A ∈ l → B ∈ l → A ∈ α → B ∈ α → l ⊂ α
-  I6 :
-    ∀ {α β : Γ.Plane} {A : Γ.Point},
-      A ∈ α → A ∈ β → ∃ (B : Γ.Point), A ≠ B ∧ B ∈ α ∧ B ∈ β
-  I7_line :
-    ∀ (l : Γ.Line), ∃ (A B : Γ.Point), A ≠ B ∧ A ∈ l ∧ B ∈ l
-  I7_plane :
-    ∀ (α : Γ.Plane), ∃ (A B C : Γ.Point),
-      PointDistinct3 A B C ∧ A ∈ α ∧ B ∈ α ∧ C ∈ α ∧ ¬Col A B C
-  I7_space :
-    ∃ (A B C D : Γ.Point), PointDistinct4 A B C D ∧ ¬Cop A B C D
+  I₁ : ∀ {A B}, A ≠ B → ∃ l : Γ.Line, A ∈ l ∧ B ∈ l
+  I₂ : ∀ {A B} {l m : Γ.Line} ,A ≠ B → A ∈ l → B ∈ l → A ∈ m → B ∈ m → l = m
+  I₃ :
+    (∀ (l : Γ.Line), (∃ A B, A ≠ B ∧ A ∈ l ∧ B ∈ l)) ∧
+      ∃ A B C : Γ.Point, PointDistinct3 A B C ∧ ¬Col A B C
+  I₄ : ∀ (A B C), ∃ α : Γ.Plane, A ∈ α ∧ B ∈ α ∧ C ∈ α
+  I₅ : ∀ {A B C : Γ.Point} {α β : Γ.Plane}, ¬Col A B C →
+    A ∈ α → B ∈ α → C ∈ α → A ∈ β → B ∈ β → C ∈ β → α = β
+  I₆ : ∀ {A B} {l : Γ.Line} {α : Γ.Plane},
+    A ≠ B → A ∈ l → B ∈ l → A ∈ α → B ∈ α → l ⊂ α
+  I₇ : ∀ {α β : Γ.Plane} {A : Γ.Point},
+    α ≠ β → A ∈ α → A ∈ β → ∃ B : Γ.Point, A ≠ B ∧ B ∈ α ∧ B ∈ β
+  I₈ : ∃ A B C D : Γ.Point, PointDistinct4 A B C D ∧ ¬Cop A B C D
 
-lemma exists_second_point_on_line [h : IncidentAxioms Γ] {A : Γ.Point} {l : Γ.Line} :
-  A ∈ l → ∃ (B : Γ.Point), B ≠ A ∧ B ∈ l := by
-  intro hAl
-  rcases h.I7_line l with ⟨X, Y, hXY, hXl, hYl⟩
-  by_cases h₁ : A = X
-  · use Y
-    rw [h₁]
-    exact ⟨id (Ne.symm hXY), hYl⟩
-  · use X
-    exact ⟨fun a ↦ h₁ (id (Eq.symm a)), hXl⟩
-
-@[simp]
-lemma inplane_iff {l : Γ.Line} {α : Γ.Plane} : l ⊂ α ↔ ∀ (A : Γ.Point), A ∈ l → A ∈ α := by
-  simp
-
-theorem T₁_₁ [hΓ : IncidentAxioms Γ] {l m : Γ.Line} :
-  l ≠ m → (∃ (α : Γ.Plane), l ⊂ α ∧ m ⊂ α) →
-    ∀ (A B : Γ.Point), A ∈ l → B ∈ l → A ∈ m → B ∈ m → A = B := by
-  intro hlm h_ex_plane A B hAl hBl hAm hBm
-  by_contra hAB
-  have h₁ := hΓ.I2 hAB hAl hBl hAm hBm
-  exact hlm h₁
+theorem T₁_₁ [hΓ : IncidentAxioms Γ] {l m : Γ.Line} {α : Γ.Plane} :
+  l ≠ m → l ⊂ α → m ⊂ α → (∃!A, A ∈ l ∧ A ∈ m) ∨ l ∥ m := by
+  intro hnlm hlα hmα
+  by_cases h₁ : l ∥ m
+  · exact Or.inr h₁
+  · simp only [Parallel, not_and_or, not_exists, not_forall, not_or, not_not] at h₁
+    rcases h₁ with h₁ | h₁
+    · have h₂ := h₁ α
+      rcases h₂ with h₂ | h₂
+      · contradiction
+      · contradiction
+    · left
+      rcases h₁ with ⟨A, hAl ,hAm⟩
+      use A
+      constructor
+      · simp only
+        exact ⟨hAl, hAm⟩
+      · intro B
+        simp only
+        intro ⟨hBl, hBm⟩
+        by_contra hnBA
+        have h₃ := hΓ.I₂ hnBA hBl hAl hBm hAm
+        contradiction
 
 theorem T₁_₂ [hΓ : IncidentAxioms Γ] {α β : Γ.Plane} :
-  α ≠ β → (∃ (A : Γ.Point), A ∈ α ∧ A ∈ β) → ∃ (l : Γ.Line), l ⊂ α ∧ l ⊂ β := by
-  intro hαβ hAαβ
-  rcases hAαβ with ⟨A, hAα, hAβ⟩
-  have h₁ := hΓ.I6 hAα hAβ
-  rcases h₁ with ⟨B, hAB, hBα, hBβ⟩
-  have h₂ := hΓ.I1 hAB
-  rcases h₂ with ⟨l, hAl, hBl⟩
-  use l
-  have h₃ := hΓ.I5 hAl hBl hAα hBα
-  have h₄ := hΓ.I5 hAl hBl hAβ hBβ
-  exact ⟨h₃, h₄⟩
-
-theorem T₁_₃ [hΓ : IncidentAxioms Γ] {l : Γ.Line} {α : Γ.Plane} :
-  l ⊄ α → ∀ (A B : Γ.Point), A ∈ l → B ∈ l → A ∈ α → B ∈ α → A = B := by
-    intro hnlα A B hAl hBl hAα hBα
-    by_contra hAB
-    have h₁ := hΓ.I5 hAl hBl hAα hBα
-    exact hnlα h₁
+  α ≠ β → (¬∃A, (A ∈ α ∧ A ∈ β)) ∨ ∃ l, (l ⊂ α ∧ l ⊂ β) := by
+  intro hnαβ
+  by_cases h₁ : (¬∃ A, A ∈ α ∧ A ∈ β)
+  · exact Or.inl h₁
+  · rw [not_not] at h₁
+    rcases h₁ with ⟨A, hAα, hAβ⟩
+    right
+    rcases hΓ.I₇ hnαβ hAα hAβ with ⟨B, hnAB, hBα, hBβ⟩
+    rcases hΓ.I₁ hnAB with ⟨l, hAl, hBl⟩
+    use l
+    constructor
+    · exact hΓ.I₆ hnAB hAl hBl hAα hBα
+    · exact hΓ.I₆ hnAB hAl hBl hAβ hBβ
 
 theorem T₂_₁ [hΓ : IncidentAxioms Γ] {l : Γ.Line} {A : Γ.Point} :
-  A ∉ l → ∃! (α : Γ.Plane), l ⊂ α ∧ A ∈ α := by
+  A ∉ l → ∃!α, l ⊂ α ∧ A ∈ α := by
   intro hnAl
-  rcases hΓ.I7_line l with ⟨P, Q, hPQ, hPl, hQl⟩
-  have h₁ : ¬Col A P Q := by
+  rcases hΓ.I₃.1 l with ⟨B, C, hnBC, hBl ,hCl⟩
+  have h₁ : ¬Col A B C := by
     simp only [Col, not_exists]
-    intro m ⟨hAm, hPm, hQm⟩
-    have h₂ : l = m := hΓ.I2 hPQ hPl hQl hPm hQm
+    intro m
+    rw [and_comm]
+    simp only [not_and]
+    intro ⟨hBm, hCm⟩
+    have h₂ := hΓ.I₂ hnBC hBl hCl hBm hCm
     rw [h₂] at hnAl
-    exact hnAl hAm
-  rcases hΓ.I3 h₁ with ⟨α, hAα, hPα, hQα⟩
+    exact hnAl
+  rcases hΓ.I₄ A B C with ⟨α, hAα, hBα, hCα⟩
   use α
-  simp only [and_imp]
   constructor
-  · constructor
-    · exact hΓ.I5 hPl hQl hPα hQα
-    · exact hAα
-  · intro β hlβ hAβ
-    have hPβ := hlβ P hPl
-    have hQβ := hlβ Q hQl
-    have h₂ := hΓ.I4 h₁ hAα hPα hQα hAβ hPβ hQβ
-    exact Eq.symm h₂
+  · simp only
+    have hlα := hΓ.I₆ hnBC hBl hCl hBα hCα
+    exact ⟨hlα, hAα⟩
+  · intro β
+    simp only
+    intro ⟨hlβ, hAβ⟩
+    have hBβ := hlβ B hBl
+    have hCβ := hlβ C hCl
+    exact hΓ.I₅ h₁ hAβ hBβ hCβ hAα hBα hCα
+
+lemma L₁ [hΓ : IncidentAxioms Γ] {l m : Γ.Line} :
+  l ≠ m → ∃ B, B ∈ l ∧ B ∉ m := by
+  intro hnlm
+  by_contra h₁
+  simp only [not_exists, not_and, not_not] at h₁
+  rcases hΓ.I₃.1 l with ⟨A, B, hnAB, hAl, hBl⟩
+  have hAm := h₁ A hAl
+  have hBm := h₁ B hBl
+  have h₂ := hΓ.I₂ hnAB hAl hBl hAm hBm
+  contradiction
+
+lemma L₂ [hΓ : IncidentAxioms Γ] {A B C : Γ.Point} {l : Γ.Line} :
+  A ≠ B → A ∈ l → B ∈ l → C ∉ l → ¬Col A B C := by
+  intro hnAB hAl hBl hnCl
+  simp only [Col, not_exists]
+  intro m ⟨hAm, hBm, hCm⟩
+  have hlm := hΓ.I₂ hnAB hAl hBl hAm hBm
+  rw [hlm] at hnCl
+  contradiction
 
 theorem T₂_₂ [hΓ : IncidentAxioms Γ] {l m : Γ.Line} :
-  l ≠ m → (∃ (A : Γ.Point), A ∈ l ∧ A ∈ m) → ∃! (α : Γ.Plane), l ⊂ α ∧ m ⊂ α := by
-  intro hlm h₁
+  (∃ A, (A ∈ l ∧ A ∈ m)) → l ≠ m → ∃!α, (l ⊂ α ∧ m ⊂ α) := by
+  intro h₁ hnlm
   rcases h₁ with ⟨A, hAl, hAm⟩
-  have h₂ := exists_second_point_on_line hAl
-  have h₃ := exists_second_point_on_line hAm
-  rcases h₂ with ⟨B, hBA, hBl⟩
-  rcases h₃ with ⟨C, hCA, hCm⟩
-  by_cases h₄ : B = C
-  · rw [h₄] at hBl
-    have h₅ := hΓ.I2 hCA hBl hAl hCm hAm
+  rcases L₁ hnlm with ⟨B, hBl, hnBm⟩
+  rcases L₁ (Ne.symm hnlm) with ⟨C, hCm, hnCl⟩
+  rcases hΓ.I₄ A B C with ⟨α, hAα, hBα, hCα⟩
+  have hnAB : A ≠ B := by
+    intro hAB
+    rw [hAB] at hAm
     contradiction
-  · have h₁ : ¬Col A B C := by
-      simp only [Col, not_exists]
-      intro n
-      simp only [not_and]
-      intro hAn hBn hCn
-      have hln := hΓ.I2 hBA hBl hAl hBn hAn
-      rw [← hln] at hCn
-      have hlm := hΓ.I2 hCA hCn hAl hCm hAm
+  have hlα : l ⊂ α := by
+    exact hΓ.I₆ hnAB hAl hBl hAα hBα
+  have hmα : m ⊂ α := by
+    have hnAC : A ≠ C := by
+      intro hAC
+      rw [hAC] at hAl
       contradiction
-    rcases hΓ.I3 h₁ with ⟨α, hAα, hBα, hCα⟩
-    use α
-    constructor
-    · simp only
-      constructor
-      · exact hΓ.I5 hAl hBl hAα hBα
-      · exact hΓ.I5 hAm hCm hAα hCα
-    · intro β ⟨hlβ, hmβ⟩
-      have hAβ := hlβ A hAl
-      have hBβ := hlβ B hBl
-      have hCβ := hmβ C hCm
-      exact hΓ.I4 h₁ hAβ hBβ hCβ hAα hBα hCα
+    exact hΓ.I₆ hnAC hAm hCm hAα hCα
+  use α
+  simp only
+  constructor
+  · exact ⟨hlα, hmα⟩
+  · intro β ⟨hlβ, hmβ⟩
+    have hAβ := hlβ A hAl
+    have hBβ := hlβ B hBl
+    have hCβ := hmβ C hCm
+    have hnCol := L₂ hnAB hAl hBl hnCl
+    exact hΓ.I₅ hnCol hAβ hBβ hCβ hAα hBα hCα
 
+class AxiomOfParallelLine (Γ : Geometry) where
+  III : ∀ {A} {l : Γ.Line} {α : Γ.Plane},
+    l ⊂ α → A ∈ α → A ∉ l →
+      ∃! m : Γ.Line, m ⊂ α ∧ A ∈ m ∧ l ∥ m
 
 
 end Geometry
