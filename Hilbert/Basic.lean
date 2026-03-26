@@ -1,6 +1,7 @@
 import Mathlib.Logic.Unique
 import Mathlib.Tactic.Use
 import Mathlib.Tactic.ApplyAt
+import Mathlib.Tactic.Check
 
 universe u v w
 
@@ -160,7 +161,7 @@ theorem not_col_of_online_and_not_online [hΓ : IncidentAxioms Γ] :
   rw [hlm] at hnCl
   contradiction
 
-theorem T₁_₁ [hΓ : IncidentAxioms Γ] {l m : Γ.Line} {α : Γ.Plane} :
+theorem T₁_₁ [hΓ : IncidentAxioms Γ] :
   l ≠ m → l ⊂ α → m ⊂ α → (∃!A, A ∈ l ∧ A ∈ m) ∨ l ∥ m := by
   intro hnlm hlα hmα
   by_cases h₁ : l ∥ m
@@ -184,7 +185,7 @@ theorem T₁_₁ [hΓ : IncidentAxioms Γ] {l m : Γ.Line} {α : Γ.Plane} :
         have h₃ := hΓ.I₂ hnBA hBl hAl hBm hAm
         contradiction
 
-theorem T₁_₁_₁ [hΓ : IncidentAxioms Γ] {l m : Γ.Line} {α : Γ.Plane} :
+theorem T₁_₁_₁ [hΓ : IncidentAxioms Γ] :
   l ≠ m → l ⊂ α → m ⊂ α → l ∦ m → (∃!A, A ∈ l ∧ A ∈ m) := by
   intro hnlm hlα hmα hn_para_lm
   have h₁ := T₁_₁ hnlm hlα hmα
@@ -192,7 +193,7 @@ theorem T₁_₁_₁ [hΓ : IncidentAxioms Γ] {l m : Γ.Line} {α : Γ.Plane} :
   · exact h₁
   · contradiction
 
-theorem T₁_₂ [hΓ : IncidentAxioms Γ] {α β : Γ.Plane} :
+theorem T₁_₂ [hΓ : IncidentAxioms Γ] :
   α ≠ β → (¬∃A, (A ∈ α ∧ A ∈ β)) ∨ ∃ l, (l ⊂ α ∧ l ⊂ β) := by
   intro hnαβ
   by_cases h₁ : (¬∃ A, A ∈ α ∧ A ∈ β)
@@ -207,7 +208,7 @@ theorem T₁_₂ [hΓ : IncidentAxioms Γ] {α β : Γ.Plane} :
     · exact hΓ.I₆ hnAB hAl hBl hAα hBα
     · exact hΓ.I₆ hnAB hAl hBl hAβ hBβ
 
-theorem T₂_₁ [hΓ : IncidentAxioms Γ] {l : Γ.Line} {A : Γ.Point} :
+theorem T₂_₁ [hΓ : IncidentAxioms Γ] :
   A ∉ l → ∃!α, l ⊂ α ∧ A ∈ α := by
   intro hnAl
   rcases hΓ.I₃.1 l with ⟨B, C, hnBC, hBl ,hCl⟩
@@ -233,7 +234,7 @@ theorem T₂_₁ [hΓ : IncidentAxioms Γ] {l : Γ.Line} {A : Γ.Point} :
     have hCβ := hlβ C hCl
     exact hΓ.I₅ h₁ hAβ hBβ hCβ hAα hBα hCα
 
-lemma L₂ [hΓ : IncidentAxioms Γ] {l m : Γ.Line} :
+lemma L₂ [hΓ : IncidentAxioms Γ] :
   l ≠ m → ∃ B, B ∈ l ∧ B ∉ m := by
   intro hnlm
   by_contra h₁
@@ -244,7 +245,7 @@ lemma L₂ [hΓ : IncidentAxioms Γ] {l m : Γ.Line} :
   have h₂ := hΓ.I₂ hnAB hAl hBl hAm hBm
   contradiction
 
-lemma L₃ [hΓ : IncidentAxioms Γ] {A B C : Γ.Point} {l : Γ.Line} :
+lemma L₃ [hΓ : IncidentAxioms Γ] :
   A ≠ B → A ∈ l → B ∈ l → C ∉ l → ¬Col A B C := by
   intro hnAB hAl hBl hnCl
   simp only [Col, not_exists]
@@ -253,7 +254,7 @@ lemma L₃ [hΓ : IncidentAxioms Γ] {A B C : Γ.Point} {l : Γ.Line} :
   rw [hlm] at hnCl
   contradiction
 
-theorem T₂_₂ [hΓ : IncidentAxioms Γ] {l m : Γ.Line} :
+theorem T₂_₂ [hΓ : IncidentAxioms Γ] :
   (∃ A, (A ∈ l ∧ A ∈ m)) → l ≠ m → ∃!α, (l ⊂ α ∧ m ⊂ α) := by
   intro h₁ hnlm
   rcases h₁ with ⟨A, hAl, hAm⟩
@@ -287,12 +288,12 @@ theorem T₂_₂ [hΓ : IncidentAxioms Γ] {l m : Γ.Line} :
 abbrev bet (A B C : Γ.Point) := Γ.Bet A B C
 notation:50 A:50 "≺" B:51 "≺" C:51 => bet A B C
 
-def SameSide (A B : Γ.Point) (l : Γ.Line) : Prop := ¬∃ C, C ∈ l ∧ A ≺ C ≺ B
-def OppoSide (A B : Γ.Point) (l : Γ.Line) : Prop := ∃ C, C ∈ l ∧ A ≺ C ≺ B
+def SameSide (A B : Γ.Point) (l : Γ.Line) : Prop := A ∉ l ∧ B ∉ l ∧ ¬∃ C, C ∈ l ∧ A ≺ C ≺ B
+def OppoSide (A B : Γ.Point) (l : Γ.Line) : Prop := A ∉ l ∧ B ∉ l ∧ ∃ C, C ∈ l ∧ A ≺ C ≺ B
 
 class OrderAxioms (Γ : Geometry) where
   II₁ : ∀ {A B C : Γ.Point}, A ≺ B ≺ C → Col A B C ∧ ≠₃ A B C ∧ C ≺ B ≺ A
-  II₂ : ∀ A B : Γ.Point, ∃ C : Γ.Point, A ≺ B ≺ C
+  II₂ : ∀ {A B}, A ≠ B → ∃ C : Γ.Point, A ≺ B ≺ C
   II₃ : ∀ {A B C : Γ.Point}, Col A B C →
     ¬(A ≺ B ≺ C ∧ B ≺ C ≺ A) ∧
       ¬(B ≺ C ≺ A ∧ C ≺ A ≺ B) ∧
@@ -354,13 +355,6 @@ theorem L₄ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
     rw [hlm] at hnAl
     contradiction
 
-theorem C₁ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
-  ≠₃ A B C → ¬Col A B C →
-    l ⊂ α → A ∈ α → B ∈ α → C ∈ α → A ∉ l → B ∉ l → C ∉ l →
-      (∃ D, D ∈ l ∧ A ≺ D ≺ B) → (∃ E, E ∈ l ∧ A ≺ E ≺ C) → ¬(∃ F, F ∈ l ∧ B ≺ F ≺ C) := by
-  intro hnABC hnColABC hlα hAα hBα hCα hnAl hnBl hnCl hAB hAC
-  sorry
-
 --theorem bet_4 : A ≺ B ≺ C → B ≺ C ≺ D → A ≺ C ≺ D ∧ A ≺ B ≺ D := by
 theorem L₅ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
   A ∉ l →  (∃ C, (C ∈ l ∧ A ≺ C ≺ B)) → ¬∃ C, (C ∈ l ∧ A ≺ B ≺ C) := by
@@ -405,18 +399,43 @@ theorem L₆ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
   rw [hlm] at hnAl
   exact hnAl hAm
 
+theorem C₁ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
+  ≠₃ A B C → ¬Col A B C →
+    l ⊂ α → A ∈ α → B ∈ α → C ∈ α → A ∉ l → B ∉ l → C ∉ l →
+      (∃ D, D ∈ l ∧ A ≺ D ≺ B) →
+        (∃ E, E ∈ l ∧ A ≺ E ≺ C) →
+          SameSide B C l := by
+  intro hnABC hnColABC hlα hAα hBα hCα hnAl hnBl hnCl hAB hAC
+  refine ⟨hnBl, hnCl, ?_⟩
+  intro hBC
+  sorry
+
 theorem T₃ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
   ∀ (A C), A ≠ C → ∃ B : Γ.Point, A ≺ B ≺ C := by
   intro A C hnAC
   rcases hΓ₁.I₁ hnAC with ⟨l, hAl ,hCl⟩
   rcases exists_not_online_point l with ⟨E, hnEl⟩
-  rcases hΓ₂.II₂ A E with ⟨F, hbAEF⟩
-  rcases hΓ₂.II₂ F C with ⟨G, hbFCG⟩
+  have hnAE : A ≠ E := by
+    intro hAE
+    rw [hAE] at hAl
+    contradiction
+  rcases hΓ₂.II₂ hnAE with ⟨F, hbAEF⟩
+  have hnFC : F ≠ C := by
+    intro hFC
+    rw [hFC] at hbAEF
+    have hcAEC := col_of_bet hbAEF
+    rw [col_right_comm] at hcAEC
+    have hEl := online_of_col hnAC hcAEC hAl hCl
+    contradiction
+  rcases hΓ₂.II₂ hnFC with ⟨G, hbFCG⟩
   have hcAEF := col_of_bet hbAEF
   have hcFCG := col_of_bet hbFCG
+  have hnAF := (neq3_of_bet hbAEF).2.2
+  have hnEF := (neq3_of_bet hbAEF).2.1
+  have hnFC := (neq3_of_bet hbFCG).1
+  have hnCG := (neq3_of_bet hbFCG).2.1
   have hnFl : F ∉ l := by
     intro hFl
-    have hnAF := (neq3_of_bet hbAEF).2.2
     rcases hcAEF with ⟨m, hAm, hEm, hFm⟩
     have hlm := hΓ₁.I₂ hnAF hAl hFl hAm hFm
     rw [hlm] at hnEl
@@ -424,7 +443,6 @@ theorem T₃ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
   have hnGl : G ∉ l := by
     intro hGl
     rcases hcFCG with ⟨m, hFm, hCm, hGm⟩
-    have hnCG := (neq3_of_bet hbFCG).2.1
     have hlm := hΓ₁.I₂ hnCG hCl hGl hCm hGm
     rw [hlm] at hnFl
     exact hnFl hFm
@@ -436,7 +454,6 @@ theorem T₃ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
       intro hAG
       rw [hAG] at hAl
       contradiction
-    have hnAF := (neq3_of_bet hbAEF).2.2
     have hnFG := (neq3_of_bet hbFCG).2.2
     exact ⟨hnAF, hnFG, hnAG⟩
   have hlα : l ⊂ α := by
@@ -467,7 +484,6 @@ theorem T₃ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
     contradiction
   have hnFm : F ∉ m := by
     intro hFm
-    have hnEF := (neq3_of_bet hbAEF).2.1
     rcases hcAEF with ⟨n, hAn, hEn, hFn⟩
     have hmn := hΓ₁.I₂ hnEF hEm hFm hEn hFn
     rw [hmn] at hnAm
@@ -475,20 +491,16 @@ theorem T₃ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
   have hnCm : C ∉ m := by
     intro hCm
     rcases hcFCG with ⟨n, hFn, hCn, hGn⟩
-    have hnCG := (neq3_of_bet hbFCG).2.1
     have hmn := hΓ₁.I₂ hnCG hCm hGm hCn hGn
     rw [hmn] at hnFm
     contradiction
   have hnAFC : ≠₃ A F C := by
-    have hnAF := (neq3_of_bet hbAEF).2.2
-    have hnFC := (neq3_of_bet hbFCG).1
     exact ⟨hnAF, hnFC, hnAC⟩
   have hncAFC := not_col_of_online_and_not_online hnAC hAl hCl hnFl
   rw [col_right_comm] at hncAFC
   have hmα : m ⊂ α := by
     have hEα : E ∈ α := by
       rcases hcAEF with ⟨n, hAn, hEn ,hFn⟩
-      have hnAF := (neq3_of_bet hbAEF).2.2
       have hnα := hΓ₁.I₆ hnAF hAn hFn hAα hFα
       exact hnα E hEn
     exact hΓ₁.I₆ hnEG hEm hGm hEα hGα
@@ -502,6 +514,109 @@ theorem T₃ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
     · contradiction
   rcases h₂ with ⟨B, hBm, hb_B⟩
   use B
+
+theorem T₄ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
+  Col A B C → ≠₃ A B C → A ≺ B ≺ C ∨ B ≺ C ≺ A ∨ C ≺ A ≺ B := by
+  intro hcABC ⟨hnAB, hnBC, hnAC⟩
+  rw [or_comm, or_assoc, or_iff_not_imp_left, or_iff_not_imp_left]
+  intro hnbBCA hnbCAB
+  rcases hΓ₁.I₁ hnAC with ⟨l, hAl, hCl⟩
+  rcases exists_not_online_point l with ⟨D, hnDl⟩
+  have hBl := online_of_col hnAC (col_right_comm.mp hcABC) hAl hCl
+  have hnAD : A ≠ D := by
+    intro hAD
+    rw [hAD] at hAl
+    contradiction
+  have hnBD : B ≠ D := by
+    intro hBD
+    rw [hBD] at hBl
+    contradiction
+  have hnCD : C ≠ D := by
+    intro hBD
+    rw [hBD] at hCl
+    contradiction
+  rcases hΓ₁.I₁ hnAD with ⟨m₁, hAm₁, hDm₁⟩
+  rcases hΓ₁.I₁ hnBD with ⟨m₂, hBm₂, hDm₂⟩
+  rcases hΓ₂.II₂ hnBD with ⟨G, hbBDG⟩
+  rcases hΓ₁.I₄ B C G with ⟨α, hBα, hCα, hGα⟩
+  have hnBG : B ≠ G := (neq3_of_bet hbBDG).2.2
+  have hnDG : D ≠ G := (neq3_of_bet hbBDG).2.1
+  have hnBm₁ : ¬ B ∈ m₁ := by
+    intro hBm₁'
+    have hm₁l : m₁ = l := hΓ₁.I₂ hnAB hAm₁ hBm₁' hAl hBl
+    have hDl : D ∈ l := by simpa [hm₁l] using hDm₁
+    exact hnDl hDl
+  have hnCm₁ : ¬ C ∈ m₁ := by
+    intro hCm₁
+    have hm₁l : m₁ = l := hΓ₁.I₂ hnAC hAm₁ hCm₁ hAl hCl
+    have hDl : D ∈ l := by simpa [hm₁l] using hDm₁
+    exact hnDl hDl
+  have hnGC : G ≠ C := by
+    intro hGC'
+    have hbBDC : B ≺ D ≺ C := by simpa [hGC'] using hbBDG
+    rcases col_of_bet hbBDC with ⟨n, hBn, hDn, hCn⟩
+    have hnl : n = l := hΓ₁.I₂ hnBC hBn hCn hBl hCl
+    have hDl : D ∈ l := by simpa [hnl] using hDn
+    contradiction
+  have hnGm₁ : ¬ G ∈ m₁ := by
+    intro hGm₁
+    rcases col_of_bet hbBDG with ⟨n, hBn, hDn, hGn⟩
+    have hnm₁ : n = m₁ := hΓ₁.I₂ hnDG hDn hGn hDm₁ hGm₁
+    have hBm₁' : B ∈ m₁ := by simpa [hnm₁] using hBn
+    exact hnBm₁ hBm₁'
+  have hncBGC : ¬ Col B G C := by
+    intro hCol
+    rcases hCol with ⟨n, hBn, hGn, hCn⟩
+    have hnl : n = l := hΓ₁.I₂ hnBC hBn hCn hBl hCl
+    have hGl : G ∈ l := by simpa [hnl] using hGn
+    rcases col_of_bet hbBDG with ⟨k, hBk, hDk, hGk⟩
+    have hkl : k = l := hΓ₁.I₂ hnBG hBk hGk hBl hGl
+    have hDl : D ∈ l := by simpa [hkl] using hDk
+    exact hnDl hDl
+  have hnBGC : ≠₃ B G C := by
+    exact ⟨hnBG, hnGC, hnBC⟩
+  have hlα : l ⊂ α := hΓ₁.I₆ hnBC hBl hCl hBα hCα
+  have hAα : A ∈ α := hlα A hAl
+  rcases col_of_bet hbBDG with ⟨n, hBn, hDn, hGn⟩
+  have hnα : n ⊂ α := hΓ₁.I₆ hnBG hBn hGn hBα hGα
+  have hDα : D ∈ α := hnα D hDn
+  have hm₁α : m₁ ⊂ α := hΓ₁.I₆ hnAD hAm₁ hDm₁ hAα hDα
+  have h₁ : ∃ A, A ∈ m₁ ∧ B ≺ A ≺ G := ⟨D, hDm₁, hbBDG⟩
+  have h₂ := hΓ₂.II₄ hnBGC hncBGC hm₁α hBα hGα hCα hnBm₁ hnGm₁ hnCm₁ h₁
+  have hnot_left : ¬ ∃ E, E ∈ m₁ ∧ B≺E≺C := by
+    intro h
+    rcases h with ⟨E, hEm₁, hBEC⟩
+    have hEl : E ∈ l := by
+      rcases col_of_bet hBEC with ⟨r, hBr, hEr, hCr⟩
+      have hr_eq_l : r = l := hΓ₁.I₂ hnBC hBr hCr hBl hCl
+      simpa [hr_eq_l] using hEr
+    by_cases hEA : E = A
+    · subst hEA
+      have hCAB : C ≺ E ≺ B := (hΓ₂.II₁ hBEC).2.2
+      exact hnbCAB hCAB
+    · have hm₁_eq_l : m₁ = l := hΓ₁.I₂ hEA hEm₁ hAm₁ hEl hAl
+      have hDl' : D ∈ l := by simpa [hm₁_eq_l] using hDm₁
+      exact hnDl hDl'
+  have hright : ∃ F, F ∈ m₁ ∧ G≺F≺C := by
+    rcases h₂ with hleft | hright
+    · exact False.elim (hnot_left hleft)
+    · exact hright
+  rcases hright with ⟨E, hEm₁, hbGEC⟩
+  have h₃ : ≠₃ A E C ∧ ¬Col A E C ∧ A ∉ n ∧ E ∉ n ∧ C ∉ n:= by sorry
+  obtain ⟨hnAEC, hncAEC, hnAn, hnEn, hnCn⟩ := h₃
+  have hEα := hm₁α E hEm₁
+  have h₃ : ∃ D, D ∈ n ∧ A ≺ D ≺ E := by sorry
+  have h₄ := hΓ₂.II₄ hnAEC hncAEC hnα hAα hEα hCα hnAn hnEn hnCn h₃
+  sorry
+
+
+theorem C₂ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
+  ≠₃ A B C → ¬Col A B C →
+    l ⊂ α → A ∈ α → B ∈ α → C ∈ α → A ∉ l → B ∉ l → C ∉ l →
+      (∃ D, D ∈ l ∧ A ≺ D ≺ B) → (∃ E, E ∈ l ∧ A ≺ E ≺ C) → ¬(∃ F, F ∈ l ∧ B ≺ F ≺ C) := by
+  intro hnABC hnColABC hlα hAα hBα hCα hnAl hnBl hnCl hAB hAC
+  sorry
+
 
 class AxiomOfParallelLine (Γ : Geometry) where
   IV : ∀ {A} {l : Γ.Line} {α : Γ.Plane},
