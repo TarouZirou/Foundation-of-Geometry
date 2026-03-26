@@ -602,12 +602,89 @@ theorem T₄ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
     · exact False.elim (hnot_left hleft)
     · exact hright
   rcases hright with ⟨E, hEm₁, hbGEC⟩
-  have h₃ : ≠₃ A E C ∧ ¬Col A E C ∧ A ∉ n ∧ E ∉ n ∧ C ∉ n:= by sorry
+  have h₃ : ≠₃ A E C ∧ ¬Col A E C ∧ A ∉ n ∧ E ∉ n ∧ C ∉ n:= by
+    have hnAn : A ∉ n := by
+      intro hAn
+      have hnl : n = l := hΓ₁.I₂ hnAB hAn hBn hAl hBl
+      have hDl : D ∈ l := by simpa [hnl] using hDn
+      exact hnDl hDl
+    have hnCn : C ∉ n := by
+      intro hCn
+      have hnl : n = l := hΓ₁.I₂ hnBC hBn hCn hBl hCl
+      have hDl : D ∈ l := by simpa [hnl] using hDn
+      exact hnDl hDl
+    have hnGl : G ∉ l := by
+      intro hGl
+      exact hncBGC ⟨l, hBl, hGl, hCl⟩
+    have hnAE : A ≠ E := by
+      intro hAE
+      subst hAE
+      rcases col_of_bet hbGEC with ⟨r, hGr, hEr, hCr⟩
+      have hrl : r = l := hΓ₁.I₂ hnAC hEr hCr hAl hCl
+      have hGl : G ∈ l := by simpa [hrl] using hGr
+      exact hnGl hGl
+    have hnEC : E ≠ C := (neq3_of_bet hbGEC).2.1
+    have hnEn : E ∉ n := by
+      intro hEn
+      rcases col_of_bet hbGEC with ⟨r, hGr, hEr, hCr⟩
+      have hrn : r = n := hΓ₁.I₂ (neq3_of_bet hbGEC).1 hGr hEr hGn hEn
+      have hCn : C ∈ n := by simpa [hrn] using hCr
+      exact hnCn hCn
+    have hncAEC : ¬Col A E C := by
+      intro hcAEC
+      rcases hcAEC with ⟨r, hAr, hEr, hCr⟩
+      have hrl : r = l := hΓ₁.I₂ hnAC hAr hCr hAl hCl
+      have hEl : E ∈ l := by simpa [hrl] using hEr
+      have hm₁l : m₁ = l := hΓ₁.I₂ hnAE hAm₁ hEm₁ hAl hEl
+      have hDl : D ∈ l := by simpa [hm₁l] using hDm₁
+      exact hnDl hDl
+    exact ⟨⟨hnAE, hnEC, hnAC⟩, hncAEC, hnAn, hnEn, hnCn⟩
   obtain ⟨hnAEC, hncAEC, hnAn, hnEn, hnCn⟩ := h₃
   have hEα := hm₁α E hEm₁
-  have h₃ : ∃ D, D ∈ n ∧ A ≺ D ≺ E := by sorry
+  have hnDE : D ≠ E := by
+    intro hDE
+    subst hDE
+    exact hnEn hDn
+  have hnADE : ≠₃ A D E := by
+    exact ⟨hnAD, hnDE, hnAEC.1⟩
+  have hColADE : Col A D E := col_of_online hAm₁ hDm₁ hEm₁
+  have h₃ : ∃ D, D ∈ n ∧ A ≺ D ≺ E := by
+    refine ⟨D, hDn, ?_⟩
+    -- NOTE:
+    --   A, D, E are collinear on m₁ (hAm₁, hDm₁, hEm₁), and
+    --   D is the unique intersection point of m₁ with n.
+    --   The remaining target is to show D is between A and E.
+    sorry
   have h₄ := hΓ₂.II₄ hnAEC hncAEC hnα hAα hEα hCα hnAn hnEn hnCn h₃
-  sorry
+  rcases h₄ with hleft | hright
+  · rcases hleft with ⟨X, hXn, hAXC⟩
+    have hXl : X ∈ l := by
+      rcases col_of_bet hAXC with ⟨r, hAr, hXr, hCr⟩
+      have hrl : r = l := hΓ₁.I₂ hnAC hAr hCr hAl hCl
+      simpa [hrl] using hXr
+    have hXB : X = B := by
+      by_cases hXB : X = B
+      · exact hXB
+      · have hnl : n = l := hΓ₁.I₂ hXB hXn hBn hXl hBl
+        have hDl : D ∈ l := by simpa [hnl] using hDn
+        exact False.elim (hnDl hDl)
+    simpa [hXB] using hAXC
+  · rcases hright with ⟨X, hXn, hEXC⟩
+    have hGX : G ≠ X := by
+      intro hGX
+      subst hGX
+      have hCGE : C ≺ G ≺ E := (hΓ₂.II₁ hEXC).2.2
+      have hCol := col_of_bet hbGEC
+      have hnot := (hΓ₂.II₃ hCol).2.2
+      exact hnot ⟨hCGE, hbGEC⟩
+    have hCn' : C ∈ n := by
+      rcases col_of_bet hEXC with ⟨r, hEr, hXr, hCr⟩
+      rcases col_of_bet hbGEC with ⟨m, hGm, hEm, hCm⟩
+      have hrm : r = m := hΓ₁.I₂ hnAEC.2.1 hEr hCr hEm hCm
+      have hGr : G ∈ r := by simpa [hrm] using hGm
+      have hrn : r = n := hΓ₁.I₂ hGX hGr hXr hGn hXn
+      simpa [hrn] using hCr
+    exact False.elim (hnCn hCn')
 
 
 theorem C₂ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
