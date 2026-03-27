@@ -335,7 +335,7 @@ theorem not_bet_of_bet_or [hΓ : OrderAxioms Γ] : A ≺ B ≺ C ∨ B ≺ C ≺
   <;> assumption
 
 
-theorem L₄ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
+theorem exists_unique_bet_point_of_exists [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
   A ∉ l → B ∉ l → (∃ C, (C ∈ l ∧ A ≺ C ≺ B)) → ∃! C, (C ∈ l ∧ A ≺ C ≺ B) := by
   intro hnAl hnBl ⟨C, hCl, hbACB⟩
   have hnAB : A ≠ B := (hΓ₂.II₁ hbACB).2.1.2.2
@@ -355,7 +355,6 @@ theorem L₄ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
     rw [hlm] at hnAl
     contradiction
 
---theorem bet_4 : A ≺ B ≺ C → B ≺ C ≺ D → A ≺ C ≺ D ∧ A ≺ B ≺ D := by
 theorem L₅ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
   A ∉ l →  (∃ C, (C ∈ l ∧ A ≺ C ≺ B)) → ¬∃ C, (C ∈ l ∧ A ≺ B ≺ C) := by
   intro hnAl h₁
@@ -398,17 +397,6 @@ theorem L₆ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
   have hlm : l = m := hΓ₁.I₂ hnCD hCl hDl hCm hDm
   rw [hlm] at hnAl
   exact hnAl hAm
-
-theorem C₁ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
-  ≠₃ A B C → ¬Col A B C →
-    l ⊂ α → A ∈ α → B ∈ α → C ∈ α → A ∉ l → B ∉ l → C ∉ l →
-      (∃ D, D ∈ l ∧ A ≺ D ≺ B) →
-        (∃ E, E ∈ l ∧ A ≺ E ≺ C) →
-          SameSide B C l := by
-  intro hnABC hnColABC hlα hAα hBα hCα hnAl hnBl hnCl hAB hAC
-  refine ⟨hnBl, hnCl, ?_⟩
-  intro hBC
-  sorry
 
 theorem T₃ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
   ∀ (A C), A ≠ C → ∃ B : Γ.Point, A ≺ B ≺ C := by
@@ -792,13 +780,36 @@ theorem T₄ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
       simpa [hrn] using hCr
     exact False.elim (hnCn hCn')
 
-
-theorem C₂ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
+theorem C₁ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
   ≠₃ A B C → ¬Col A B C →
     l ⊂ α → A ∈ α → B ∈ α → C ∈ α → A ∉ l → B ∉ l → C ∉ l →
-      (∃ D, D ∈ l ∧ A ≺ D ≺ B) → (∃ E, E ∈ l ∧ A ≺ E ≺ C) → ¬(∃ F, F ∈ l ∧ B ≺ F ≺ C) := by
-  intro hnABC hnColABC hlα hAα hBα hCα hnAl hnBl hnCl hAB hAC
-  sorry
+      (∃ D, D ∈ l ∧ A ≺ D ≺ B) →
+        (∃ E, E ∈ l ∧ (E ≺ A ≺ C ∨ A ≺ C ≺ E)) →
+          (∃ F, F ∈ l ∧ B ≺ F ≺ C) := by
+  intro hnABC hncABC hlα hAα hBα hCα hnAl hnBl hnCl hlAB hlAC
+  have h₁ := hΓ₂.II₄ hnABC hncABC hlα hAα hBα hCα hnAl hnBl hnCl hlAB
+  simp only [and_or_left, exists_or] at hlAC
+  rcases h₁ with h₁ | h₁
+  · rcases hlAC with h₂ | h₂
+    · have h₁ : ∃ E, E ∈ l ∧ C ≺ E ≺ A := by
+        rcases h₁ with ⟨E, hEl, hbAEC⟩
+        refine ⟨E, hEl, ?_⟩
+        rw [bet_symm]
+        exact hbAEC
+      have h₃ := L₅ hnCl h₁
+      simp only [not_exists, not_and] at h₃
+      rcases h₂ with ⟨E, hEl, hb₁⟩
+      have h₄ := h₃ E hEl
+      rw [bet_symm] at h₄
+      contradiction
+    · have h₃ := L₅ hnAl h₁
+      simp only [not_exists, not_and] at h₃
+      rcases h₂ with ⟨E, hEl, hb₁⟩
+      have h₄ := h₃ E hEl
+      contradiction
+  · exact h₁
+
+--theorem bet_4 : A ≺ B ≺ C → B ≺ C ≺ D → A ≺ C ≺ D ∧ A ≺ B ≺ D := by
 
 
 class AxiomOfParallelLine (Γ : Geometry) where
