@@ -648,14 +648,120 @@ theorem T₄ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
   have hnADE : ≠₃ A D E := by
     exact ⟨hnAD, hnDE, hnAEC.1⟩
   have hColADE : Col A D E := col_of_online hAm₁ hDm₁ hEm₁
-  have h₃ : ∃ D, D ∈ n ∧ A ≺ D ≺ E := by
-    refine ⟨D, hDn, ?_⟩
-    -- NOTE:
-    --   A, D, E are collinear on m₁ (hAm₁, hDm₁, hEm₁), and
-    --   D is the unique intersection point of m₁ with n.
-    --   The remaining target is to show D is between A and E.
-    sorry
-  have h₄ := hΓ₂.II₄ hnAEC hncAEC hnα hAα hEα hCα hnAn hnEn hnCn h₃
+  rcases hΓ₁.I₁ hnCD with ⟨m₃, hCm₃, hDm₃⟩
+  have hm₃α : m₃ ⊂ α := hΓ₁.I₆ hnCD hCm₃ hDm₃ hCα hDα
+  have hnAG : A ≠ G := by
+    intro hAG
+    subst hAG
+    rcases col_of_bet hbBDG with ⟨r, hBr, hDr, hAr⟩
+    have hrl : r = l := hΓ₁.I₂ hnAB hAr hBr hAl hBl
+    have hDl : D ∈ l := by simpa [hrl] using hDr
+    exact hnDl hDl
+  have hnAm₃ : ¬ A ∈ m₃ := by
+    intro hAm₃
+    have hm₃l : m₃ = l := hΓ₁.I₂ hnAC hAm₃ hCm₃ hAl hCl
+    have hDl : D ∈ l := by simpa [hm₃l] using hDm₃
+    exact hnDl hDl
+  have hnBm₃ : ¬ B ∈ m₃ := by
+    intro hBm₃
+    have hm₃l : m₃ = l := hΓ₁.I₂ hnBC hBm₃ hCm₃ hBl hCl
+    have hDl : D ∈ l := by simpa [hm₃l] using hDm₃
+    exact hnDl hDl
+  have hnGm₃ : ¬ G ∈ m₃ := by
+    intro hGm₃
+    rcases col_of_bet hbBDG with ⟨r, hBr, hDr, hGr⟩
+    have hm₃r : m₃ = r := hΓ₁.I₂ hnDG hDm₃ hGm₃ hDr hGr
+    have hCr : C ∈ r := by simpa [hm₃r] using hCm₃
+    have hrl : r = l := hΓ₁.I₂ hnBC hBr hCr hBl hCl
+    have hDl : D ∈ l := by simpa [hrl] using hDr
+    exact hnDl hDl
+  have hncBGA : ¬ Col B G A := by
+    intro hCol
+    rcases hCol with ⟨r, hBr, hGr, hAr⟩
+    have hrl : r = l := hΓ₁.I₂ hnAB hAr hBr hAl hBl
+    have hGl : G ∈ l := by simpa [hrl] using hGr
+    rcases col_of_bet hbBDG with ⟨s, hBs, hDs, hGs⟩
+    have hsl : s = l := hΓ₁.I₂ hnBG hBs hGs hBl hGl
+    have hDl : D ∈ l := by simpa [hsl] using hDs
+    exact hnDl hDl
+  have hnBGA : ≠₃ B G A := by
+    exact ⟨hnBG, Ne.symm hnAG, Ne.symm hnAB⟩
+  have hBG_on_m₃ : ∃ X, X ∈ m₃ ∧ B ≺ X ≺ G := by
+    exact ⟨D, hDm₃, hbBDG⟩
+  have hpaschBGA :=
+    hΓ₂.II₄ hnBGA hncBGA hm₃α hBα hGα hAα hnBm₃ hnGm₃ hnAm₃ hBG_on_m₃
+  have hnot_left_BGA : ¬ ∃ X, X ∈ m₃ ∧ B ≺ X ≺ A := by
+    intro h
+    rcases h with ⟨X, hXm₃, hBXA⟩
+    have hXl : X ∈ l := by
+      rcases col_of_bet hBXA with ⟨r, hBr, hXr, hAr⟩
+      have hrl : r = l := hΓ₁.I₂ hnAB hAr hBr hAl hBl
+      simpa [hrl] using hXr
+    have hXC : X = C := by
+      by_cases hXC : X = C
+      · exact hXC
+      · have hm₃l : m₃ = l := hΓ₁.I₂ hXC hXm₃ hCm₃ hXl hCl
+        have hDl : D ∈ l := by simpa [hm₃l] using hDm₃
+        exact False.elim (hnDl hDl)
+    have hBCA : B ≺ C ≺ A := by simpa [hXC] using hBXA
+    exact hnbBCA hBCA
+  have hF_on_m₃ : ∃ F, F ∈ m₃ ∧ A ≺ F ≺ G := by
+    rcases hpaschBGA with hleft | hright
+    · exact False.elim (hnot_left_BGA hleft)
+    · rcases hright with ⟨F, hFm₃, hGFA⟩
+      exact ⟨F, hFm₃, (hΓ₂.II₁ hGFA).2.2⟩
+  rcases hF_on_m₃ with ⟨F, hFm₃, hAFG⟩
+  have hnAGE : ≠₃ A G E := by
+    exact ⟨hnAG, (neq3_of_bet hbGEC).1, hnAEC.1⟩
+  have hncAGE : ¬ Col A G E := by
+    intro hCol
+    rcases hCol with ⟨r, hAr, hGr, hEr⟩
+    have hrm₁ : r = m₁ := hΓ₁.I₂ hnAEC.1 hAr hEr hAm₁ hEm₁
+    have hGm₁' : G ∈ m₁ := by simpa [hrm₁] using hGr
+    exact hnGm₁ hGm₁'
+  have hnEm₃ : ¬ E ∈ m₃ := by
+    intro hEm₃
+    have hm₃m₁ : m₃ = m₁ := hΓ₁.I₂ hnDE hDm₃ hEm₃ hDm₁ hEm₁
+    have hCm₁' : C ∈ m₁ := by simpa [hm₃m₁] using hCm₃
+    exact hnCm₁ hCm₁'
+  have hAE_on_n : ∃ X, X ∈ n ∧ A ≺ X ≺ E := by
+    have hpaschAGE :=
+      hΓ₂.II₄ hnAGE hncAGE hm₃α hAα hGα hEα hnAm₃ hnGm₃ hnEm₃
+        ⟨F, hFm₃, hAFG⟩
+    have hnot_right_AGE : ¬ ∃ X, X ∈ m₃ ∧ G ≺ X ≺ E := by
+      intro h
+      rcases h with ⟨X, hXm₃, hGXE⟩
+      rcases col_of_bet hGXE with ⟨r, hGr, hXr, hEr⟩
+      rcases col_of_bet hbGEC with ⟨s, hGs, hEs, hCs⟩
+      have hrs : r = s := hΓ₁.I₂ (neq3_of_bet hbGEC).1 hGr hEr hGs hEs
+      have hCr : C ∈ r := by simpa [hrs] using hCs
+      have hXC : X = C := by
+        by_cases hXC : X = C
+        · exact hXC
+        · have hm₃r : m₃ = r := hΓ₁.I₂ hXC hXm₃ hCm₃ hXr hCr
+          have hGm₃' : G ∈ m₃ := by simpa [hm₃r] using hGr
+          exact False.elim (hnGm₃ hGm₃')
+      have hGCE : G ≺ C ≺ E := by simpa [hXC] using hGXE
+      have hCEG : C ≺ E ≺ G := (hΓ₂.II₁ hbGEC).2.2
+      have hnot := (hΓ₂.II₃ (col_of_bet hGCE)).1
+      exact hnot ⟨hGCE, hCEG⟩
+    have hAXE_on_m₃ : ∃ X, X ∈ m₃ ∧ A ≺ X ≺ E := by
+      rcases hpaschAGE with hleft | hright
+      · exact hleft
+      · exact False.elim (hnot_right_AGE hright)
+    rcases hAXE_on_m₃ with ⟨X, hXm₃, hAXE⟩
+    have hXm₁ : X ∈ m₁ := by
+      rcases col_of_bet hAXE with ⟨r, hAr, hXr, hEr⟩
+      have hrm₁ : r = m₁ := hΓ₁.I₂ hnAEC.1 hAr hEr hAm₁ hEm₁
+      simpa [hrm₁] using hXr
+    have hXD : X = D := by
+      by_cases hXD : X = D
+      · exact hXD
+      · have hm₁m₃ : m₁ = m₃ := hΓ₁.I₂ hXD hXm₁ hDm₁ hXm₃ hDm₃
+        have hCm₁' : C ∈ m₁ := by simpa [hm₁m₃] using hCm₃
+        exact False.elim (hnCm₁ hCm₁')
+    exact ⟨D, hDn, by simpa [hXD] using hAXE⟩
+  have h₄ := hΓ₂.II₄ hnAEC hncAEC hnα hAα hEα hCα hnAn hnEn hnCn hAE_on_n
   rcases h₄ with hleft | hright
   · rcases hleft with ⟨X, hXn, hAXC⟩
     have hXl : X ∈ l := by
