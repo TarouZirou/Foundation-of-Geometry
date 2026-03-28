@@ -35,6 +35,7 @@ abbrev onPlane (A : Γ.Point) (α : Γ.Plane) : Prop := Γ.OnPlane A α
 notation:50 A:50 " ∈ " α:50 => onPlane A α
 notation:50 A:50 " ∉ " α:50 => ¬onPlane A α
 
+
 @[simp]
 def LineInPlane (l : Γ.Line) (α : Γ.Plane) : Prop :=
   ∀ (A : Γ.Point), A ∈ l → A ∈ α
@@ -43,8 +44,8 @@ abbrev inPlane (l : Γ.Line) (α : Γ.Plane) : Prop := Γ.LineInPlane l α
 notation:50 l:50 " ⊂ " α:50 => inPlane l α
 notation:50 l:50 " ⊄ " α:50 => ¬inPlane l α
 
-abbrev Segment := Γ.Point × Γ.Point
-abbrev onSegment (A : Γ.Point) (l : Segment) := Γ.Bet l.1 A l.2
+abbrev Segment (Γ : Geometry) := Γ.Point × Γ.Point
+abbrev onSegment (A : Γ.Point) (l : Γ.Segment) := Γ.Bet l.1 A l.2
 notation:50 A:50 " ∈ " l:50 => onSegment A l
 notation:50 A:50 " ∉ " l:50 => ¬onSegment A l
 
@@ -1042,11 +1043,64 @@ theorem T₅_₁ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
     exact L₇ hbBCD hbABC
   · exact L₇ hbABC hbBCD
 
+def PointSameSide (O A X : Γ.Point) : Prop := O = X ∨ (Col O A X ∧ ¬A ≺ O ≺ X)
+structure Ray (Γ : Geometry) (O : Γ.Point) where
+  dir : Γ.Point
+  neq : O ≠ dir
+
+def PointRay {Γ : Geometry} (O A : Γ.Point) (hOA : O ≠ A) : Ray Γ O where
+  dir := A
+  neq := hOA
+
+def inRay {Γ : Geometry} {O : Γ.Point} (X : Γ.Point) (r : Ray Γ O) : Prop :=
+  PointSameSide O r.dir X
+
+notation:50 X:50 "∈" r:50 => inRay X r
+
+structure Angle (Γ : Geometry) (O : Γ.Point) where
+  left : Ray Γ O
+  right : Ray Γ O
+
+def angle {Γ : Geometry} {O : Γ.Point} (h k : Ray Γ O) : Angle Γ O where
+  left := h
+  right := k
+
+def pointAngle {Γ : Geometry} (A O B : Γ.Point)
+    {hOA : O ≠ A} {hOB : O ≠ B} : Angle Γ O where
+  left := PointRay O A hOA
+  right := PointRay O B hOB
+notation:50 "∠" "(" h "," k ")" => angle h k
+notation:50 "∠" A:arg O:arg B:arg => pointAngle A O B
+
+abbrev segCong (A A' : Γ.Segment) : Prop := Γ.SegCong A.1 A.2 A'.1 A'.2
+notation:50 "[" A:arg "," B:arg "]" "≡" "[" A':arg "," B':arg "]" => segCong ⟨A, B⟩ ⟨A', B'⟩
+
+abbrev angCong := Γ.AngCong
+notation:50 "∠" A:arg B:arg C:arg "≡" "∠" A':arg B':arg C':arg => angCong A B C A' B' C'
+
+class CongruenceAxioms (Γ : Geometry) where
+  III₁ : ∀ {A B A'} {l l': Γ.Line}, A ∈ l → B ∈ l → A' ∈ l' → ∃ B', B ∈ l' ∧ [A, B] ≡ [A', B']
+  III₂ :
+    ∀ {A B A' B' A'' B'' : Γ.Point},
+      [A', B'] ≡ [A, B] → [A'', B''] ≡ [A, B] → [A', B'] ≡ [A'', B'']
+  III₃ :
+    ∀ {A B C A' B' C'} {l l' : Γ.Line},
+      A ∈ l → B ∈ l → C ∈ l →
+        A' ∈ l' → B' ∈ l' → C' ∈ l' →
+          [A, B] ≡ [A', B'] → [B, C] ≡ [B', C'] → [A, C] ≡ [A', C']
+  III₄ :
+    ∀ {A B C A' B' P : Γ.Point} {l : Γ.Line} {α : Γ.Plane},
+      ¬Col A B C → l ⊂ α → A' ∈ l → B' ∈ l → A' ≠ B' → P ∈ α → P ∉ l →
+        ∃! C', C' ∈ α ∧ C' ∉ l ∧ SameSide C' P l ∧ ∠ B A C ≡ ∠ B' A' C'
+  III₅ :
+    ∀ {A B C A' B' C' : Γ.Point},
+      [A, B] ≡ [A', B'] → [A, C] ≡ [A', C'] → ∠ B A C ≡ ∠ B' A' C' → ∠ A B C ≡ ∠ A' B' C'
+
+
 class AxiomOfParallelLine (Γ : Geometry) where
   IV : ∀ {A} {l : Γ.Line} {α : Γ.Plane},
     l ⊂ α → A ∈ α → A ∉ l →
       ∃! m : Γ.Line, m ⊂ α ∧ A ∈ m ∧ l ∥ m
-
 
 end Geometry
 
