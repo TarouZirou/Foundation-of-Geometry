@@ -86,6 +86,11 @@ notation:50 "≠₄" A:arg B:arg C:arg D:arg => PointDistinct4 A B C D
 def Cop (A B C D : Γ.Point) : Prop :=
   ∃ (α : Γ.Plane), (A ∈ α) ∧ (B ∈ α) ∧ (C ∈ α) ∧ (D ∈ α)
 
+theorem neq_of_online_and_not_online : A ∈ l → B ∉ l → A ≠ B := by
+  intro hAl hnBl hAB
+  subst hAB
+  contradiction
+
 class IncidentAxioms (Γ : Geometry) where
   I₁ : ∀ {A B}, A ≠ B → ∃ l : Γ.Line, A ∈ l ∧ B ∈ l
   I₂ : ∀ {A B} {l m : Γ.Line} ,A ≠ B → A ∈ l → B ∈ l → A ∈ m → B ∈ m → l = m
@@ -780,7 +785,7 @@ theorem T₄ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
       simpa [hrn] using hCr
     exact False.elim (hnCn hCn')
 
-theorem C₁ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
+theorem C₁_₁ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
   ≠₃ A B C → ¬Col A B C →
     l ⊂ α → A ∈ α → B ∈ α → C ∈ α → A ∉ l → B ∉ l → C ∉ l →
       (∃ D, D ∈ l ∧ A ≺ D ≺ B) →
@@ -809,8 +814,233 @@ theorem C₁ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
       contradiction
   · exact h₁
 
---theorem bet_4 : A ≺ B ≺ C → B ≺ C ≺ D → A ≺ C ≺ D ∧ A ≺ B ≺ D := by
+theorem C₁_₂ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
+  ≠₃ A B C → ¬Col A B C →
+    l ⊂ α → A ∈ α → B ∈ α → C ∈ α → A ∉ l → B ∉ l → C ∉ l →
+      (∃ D, D ∈ l ∧ A ≺ D ≺ B) →
+        (∃ E, E ∈ l ∧ E ≺ A ≺ C) ∨ (∃ E, E ∈ l ∧ A ≺ C ≺ E) →
+          (∃ F, F ∈ l ∧ B ≺ F ≺ C) := by
+  intro hnABC hncABC hlα hAα hBα hCα hnAl hnBl hnCl hlAB hlAC
+  have h₁ := hΓ₂.II₄ hnABC hncABC hlα hAα hBα hCα hnAl hnBl hnCl hlAB
+  rcases h₁ with h₁ | h₁
+  · rcases hlAC with h₂ | h₂
+    · have h₁ : ∃ E, E ∈ l ∧ C ≺ E ≺ A := by
+        rcases h₁ with ⟨E, hEl, hbAEC⟩
+        refine ⟨E, hEl, ?_⟩
+        rw [bet_symm]
+        exact hbAEC
+      have h₃ := L₅ hnCl h₁
+      simp only [not_exists, not_and] at h₃
+      rcases h₂ with ⟨E, hEl, hb₁⟩
+      have h₄ := h₃ E hEl
+      rw [bet_symm] at h₄
+      contradiction
+    · have h₃ := L₅ hnAl h₁
+      simp only [not_exists, not_and] at h₃
+      rcases h₂ with ⟨E, hEl, hb₁⟩
+      have h₄ := h₃ E hEl
+      contradiction
+  · exact h₁
 
+
+theorem L₇ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] : A ≺ B ≺ C → B ≺ C ≺ D → A ≺ C ≺ D := by
+  intro hbABC hbBCD
+  have hcABC := col_of_bet hbABC
+  have ⟨hnAB, hnBC, hnAC⟩ := neq3_of_bet hbABC
+  rcases hcABC with ⟨g, hAg, hBg, hCg⟩
+  have hcABC := col_of_bet hbABC
+  have hcBCD := col_of_bet hbBCD
+  have hDg : D ∈ g := by
+    rcases hcBCD with ⟨l, hBl, hCl, hDl⟩
+    have h₁ := hΓ₁.I₂ (neq3_of_bet hbABC).2.1 hBl hCl hBg hCg
+    subst h₁
+    exact hDl
+  have hnAD : A ≠ D := by
+    intro hAD
+    subst hAD
+    have h₁ := (hΓ₂.II₃ hcABC).1
+    exact h₁ ⟨hbABC, hbBCD⟩
+  rcases exists_not_online_point g with ⟨E, hnEg⟩
+  have hnCE := neq_of_online_and_not_online hCg hnEg
+  rcases hΓ₂.II₂ hnCE with ⟨F, hbCEF⟩
+  rcases hΓ₁.I₄ B C E with ⟨α, hBα, hCα, hEα⟩
+  have hgα : g ⊂ α := hΓ₁.I₆ hnBC hBg hCg hBα hCα
+  have hAα := hgα A hAg
+  have hDα := hgα D hDg
+  have ⟨_, hnEF, hnCF⟩ := neq3_of_bet hbCEF
+  have hnFg : F ∉ g := by
+    intro hFg
+    have hcCEF := col_of_bet hbCEF
+    rw [col_right_comm] at hcCEF
+    have hEg : E ∈ g := online_of_col hnCF hcCEF hCg hFg
+    contradiction
+  have hnAE := neq_of_online_and_not_online hAg hnEg
+  rcases hΓ₁.I₁ hnAE with ⟨l₁, hAl₁, hEl₁⟩
+  have hl₁α : l₁ ⊂ α := hΓ₁.I₆ hnAE hAl₁ hEl₁ hAα hEα
+  have hFα : F ∈ α := by
+    rcases hΓ₁.I₁ hnCE with ⟨m₁, hCm₁, hEm₁⟩
+    have hm₁α : m₁ ⊂ α := hΓ₁.I₆ hnCE hCm₁ hEm₁ hCα hEα
+    have hFm₁ := online_of_col hnCE (col_of_bet hbCEF) hCm₁ hEm₁
+    exact hm₁α F hFm₁
+  have hnBF : B ≠ F := neq_of_online_and_not_online hBg hnFg
+  have hnFCB : ≠₃ F C B := ⟨Ne.symm hnCF, Ne.symm hnBC, Ne.symm hnBF⟩
+  have hncFCB := not_col_of_online_and_not_online hnBC hBg hCg hnFg
+  rw [col_right_comm, col_left_rot] at hncFCB
+  have hnCl₁ : C ∉ l₁:= by
+    intro hCl₁
+    have hl₁g := hΓ₁.I₂ hnAC hAl₁ hCl₁ hAg hCg
+    subst hl₁g
+    contradiction
+  have hnBl₁ : B ∉ l₁ := by
+    intro hBl₁
+    have hl₁g := hΓ₁.I₂ hnAB hAl₁ hBl₁ hAg hBg
+    subst hl₁g
+    contradiction
+  have hnFl₁ : F ∉ l₁ := by
+    intro hFl₁
+    have hcCEF : Col C E F := col_of_bet hbCEF
+    rcases hcCEF with ⟨m, hCm, hEm, hFm⟩
+    have hl₁m : l₁ = m := hΓ₁.I₂ hnEF hEl₁ hFl₁ hEm hFm
+    subst hl₁m
+    contradiction
+  have h₁ := hΓ₂.II₄ hnFCB hncFCB hl₁α hFα hCα hBα hnFl₁ hnCl₁ hnBl₁ ⟨E, hEl₁, bet_symm.mp hbCEF⟩
+  have h₂ : ∃ A, A ∈ l₁ ∧ C ≺ B ≺ A := ⟨A, hAl₁, bet_symm.mp hbABC⟩
+  apply L₆ hnCl₁ at h₂
+  have h₁ : ∃ E, E ∈ l₁ ∧ F ≺ E ≺ B := by
+    rcases h₁ with h₁ | h₁
+    · exact h₁
+    · contradiction
+  rcases h₁ with ⟨G, hGl₁, hbFGB⟩
+  have hcFGB := col_of_bet hbFGB
+  have ⟨hnFG, hnGB, hnFB⟩ := neq3_of_bet hbFGB
+  have hnGg : G ∉ g := by
+    intro hGg
+    rw [col_left_rot] at hcFGB
+    have hFg := online_of_col hnGB hcFGB hGg hBg
+    contradiction
+  have hnBG : B ≠ G := neq_of_online_and_not_online hBg hnGg
+  have hnDG : D ≠ G := neq_of_online_and_not_online hDg hnGg
+  have hnBD : B ≠ D := (neq3_of_bet hbBCD).2.2
+  have hnBDG : ≠₃ B D G := ⟨hnBD, hnDG, hnBG⟩
+  have hncBDG : ¬Col B D G := by
+    intro ⟨m, hBm, hDm, hGm⟩
+    have hgm := hΓ₁.I₂ hnBD hBg hDg hBm hDm
+    subst hgm
+    contradiction
+  rcases hΓ₁.I₁ hnCF with ⟨l₂, hCl₂, hFl₂⟩
+  have hEl₂ : E ∈ l₂ := online_of_col hnCF ((col_right_comm.mp ∘ col_of_bet) (hbCEF)) hCl₂ hFl₂
+  have hnBl₂ : B ∉ l₂ := by
+    intro hBl₂
+    have hgl₂ := hΓ₁.I₂ hnBC hBg hCg hBl₂ hCl₂
+    subst hgl₂
+    contradiction
+  have hnCD := (neq3_of_bet hbBCD).2.1
+  have hnDl₂ : D ∉ l₂ := by
+    intro hDl₂
+    have hgl₂ := hΓ₁.I₂ hnCD hCg hDg hCl₂ hDl₂
+    subst hgl₂
+    contradiction
+  have hnGl₂ : G ∉ l₂ := by
+    intro hGl₂
+    rcases hcFGB with ⟨m, hFm, hGm, hBm⟩
+    have hnFG := (neq3_of_bet hbFGB).1
+    have hl₂m := hΓ₁.I₂ hnFG hFl₂ hGl₂ hFm hGm
+    subst hl₂m
+    contradiction
+  have hl₂α : l₂ ⊂ α := hΓ₁.I₆ hnCF hCl₂ hFl₂ hCα hFα
+  have hGα : G ∈ α := hl₁α G hGl₁
+  have h₃ := hΓ₂.II₄ hnBDG hncBDG hl₂α hBα hDα hGα hnBl₂ hnDl₂ hnGl₂ ⟨C, hCl₂, hbBCD⟩
+  have h₄ : ∃ F, F ∈ l₂ ∧ B ≺ G ≺ F := ⟨F, hFl₂, bet_symm.mp hbFGB⟩
+  have h₅ := L₆ hnBl₂ h₄
+  have h₆ : ∃ H, H ∈ l₂ ∧ D ≺ H ≺ G := by
+    rcases h₃ with h₃ | h₃
+    · contradiction
+    · exact h₃
+  rcases h₆ with ⟨H, hHl₂, hbDHG⟩
+  have hnACE : ≠₃ A C E := ⟨hnAC, hnCE, hnAE⟩
+  have hncACE := not_col_of_online_and_not_online hnAC hAg hCg hnEg
+  rcases hΓ₁.I₁ hnBF with ⟨l₃, hBl₃, hFl₃⟩
+  have hGl₃ : G ∈ l₃:= by
+    rw [col_symm, col_right_comm] at hcFGB
+    exact online_of_col hnBF hcFGB hBl₃ hFl₃
+  have hnAl₃ : A ∉ l₃ := by
+    intro hAl₃
+    have hgl₃ := hΓ₁.I₂ hnAB hAg hBg hAl₃ hBl₃
+    subst hgl₃
+    contradiction
+  have hnCl₃ : C ∉ l₃ := by
+    intro hCl₃
+    have hgl₃ := hΓ₁.I₂ hnBC hBg hCg hBl₃ hCl₃
+    subst hgl₃
+    contradiction
+  have hnEl₃ : E ∉ l₃ := by
+    intro hEl₃
+    rcases col_of_bet hbCEF with ⟨m, hCm, hEm, hFm⟩
+    have hml₃ := hΓ₁.I₂ hnEF hEm hFm hEl₃ hFl₃
+    subst hml₃
+    contradiction
+  have hl₃α : l₃ ⊂ α := hΓ₁.I₆ hnBF hBl₃ hFl₃ hBα hFα
+  have h₆ := hΓ₂.II₄ hnACE hncACE hl₃α hAα hCα hEα hnAl₃ hnCl₃ hnEl₃ ⟨B, hBl₃, hbABC⟩
+  have h₇ : ∃ F, F ∈ l₃ ∧ C ≺ E ≺ F := ⟨F, hFl₃, hbCEF⟩
+  have h₇ := L₆ hnCl₃ h₇
+  have h₈ : ∃ G, G ∈ l₃ ∧ A ≺ G ≺ E := by
+    rcases h₆ with h | h
+    · exact h
+    · contradiction
+  rcases h₈ with ⟨G', hG'l₃, hbAG'E⟩
+  have hGG' : G = G' := by
+    by_contra hnGG'
+    have hcAEG' := col_of_bet hbAG'E
+    rw [col_right_comm] at hcAEG'
+    have hG'l₁ := online_of_col hnAE hcAEG' hAl₁ hEl₁
+    have hl₁l₃ := hΓ₁.I₂ hnGG' hGl₁ hG'l₁ hGl₃ hG'l₃
+    subst hl₁l₃
+    contradiction
+  subst hGG'
+  have hHα := hl₂α H hHl₂
+  have hnAG : A ≠ G := neq_of_online_and_not_online hAg hnGg
+  have hnDGA : ≠₃ D G A := ⟨hnDG, Ne.symm hnAG, Ne.symm hnAD⟩
+  have hncDGA : ¬Col D G A := by
+    intro ⟨m, hDm, hGm, hAm⟩
+    have hgm := hΓ₁.I₂ hnAD hAg hDg hAm hDm
+    subst hgm
+    contradiction
+  have hnAl₂ : A ∉ l₂ := by
+    intro hAl₂
+    have hgl₂ := hΓ₁.I₂ hnAC hAg hCg hAl₂ hCl₂
+    subst hgl₂
+    contradiction
+  have h₇ := hΓ₂.II₄ hnDGA hncDGA hl₂α hDα hGα hAα hnDl₂ hnGl₂ hnAl₂ ⟨H, hHl₂, hbDHG⟩
+  have h₈ : ∃ E, E ∈ l₂ ∧ A ≺ G ≺ E := ⟨E, hEl₂, hbAG'E⟩
+  have h₉ := L₆ hnAl₂ h₈
+  have h₉ : ¬∃ C, C ∈ l₂ ∧ G≺C≺A := by
+    simp only [not_exists, not_and] at h₉ ⊢
+    intro E hEl₂
+    have h₉E := h₉ E hEl₂
+    rw [bet_symm]
+    exact h₉E
+  have h₁₀ : ∃ E, E ∈ l₂ ∧ D ≺ E ≺ A := by
+    rcases h₇ with h | h
+    · exact h
+    · contradiction
+  rcases h₁₀ with ⟨C', hC'l₂, hbAC'D⟩
+  rw [bet_symm] at hbAC'D
+  have hCC' : C = C' := by
+    by_contra hnCC'
+    have hC'g := online_of_col hnAD ((col_right_comm.mp ∘ col_of_bet) hbAC'D) hAg hDg
+    have hgl₂ := hΓ₁.I₂ hnCC' hCg hC'g hCl₂ hC'l₂
+    subst hgl₂
+    contradiction
+  subst hCC'
+  exact hbAC'D
+
+theorem T₅_₁ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
+  A ≺ B ≺ C → B ≺ C ≺ D → A ≺ B ≺ D ∧ A ≺ C ≺ D := by
+  intro hbABC hbBCD
+  constructor
+  · rw [bet_symm] at hbABC hbBCD ⊢
+    exact L₇ hbBCD hbABC
+  · exact L₇ hbABC hbBCD
 
 class AxiomOfParallelLine (Γ : Geometry) where
   IV : ∀ {A} {l : Γ.Line} {α : Γ.Plane},
