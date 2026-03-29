@@ -1060,6 +1060,10 @@ theorem T₅_₁ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
   · exact L₇ hbABC hbBCD
 
 def PointSameSide (O A X : Γ.Point) : Prop := O = X ∨ (Col O A X ∧ ¬A ≺ O ≺ X)
+
+def SameRayPt (O A B : Γ.Point) : Prop :=
+  PointSameSide O A B ∧ PointSameSide O B A
+
 structure Ray (Γ : Geometry) (O : Γ.Point) where
   dir : Γ.Point
   neq : O ≠ dir
@@ -1131,7 +1135,9 @@ theorem exists_ray [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] (A : �
     contradiction
 
 class CongruenceAxioms (Γ : Geometry) where
-  III₁ : ∀ {A B A'} {l : Γ.Line} (h : Γ.Ray A'), A ∈ l → B ∈ l → ∃ B', B' ∈ h ∧ [A, B] ≡ [A', B']
+  III₁ :
+    ∀ {A B A'} {l : Γ.Line} (h : Γ.Ray A'),
+      A ∈ l → B ∈ l → ∃ B', B' ∈ h ∧ [A, B] ≡ [A', B']
   III₂ :
     ∀ {A B A' B' A'' B'' : Γ.Point},
       [A', B'] ≡ [A, B] → [A'', B''] ≡ [A, B] → [A', B'] ≡ [A'', B'']
@@ -1140,10 +1146,15 @@ class CongruenceAxioms (Γ : Geometry) where
       A ≺ B ≺ C → A' ≺ B' ≺ C' →
         [A, B] ≡ [A', B'] → [B, C] ≡ [B', C'] → [A, C] ≡ [A', C']
   III₄ :
-    (∀ {A B C : Γ.Point}, ∠ A B C ≡ ∠ C B A) ∧
+    (∀ {A B C : Γ.Point}, ∠ A B C ≡ ∠ A B C) ∧
+      (∀ {A B C : Γ.Point}, ∠ A B C ≡ ∠ C B A) ∧
       ∀ {A B C A' B' P : Γ.Point} {l : Γ.Line} {α : Γ.Plane},
         ¬Col A B C → l ⊂ α → A' ∈ l → B' ∈ l → A' ≠ B' → P ∈ α → P ∉ l →
-          ∃! C', C' ∈ α ∧ C' ∉ l ∧ SameSide C' P l ∧ ∠ B A C ≡ ∠ B' A' C'
+          ∃ C',
+            C' ∈ α ∧ C' ∉ l ∧ SameSide C' P l ∧ ∠ B A C ≡ ∠ B' A' C' ∧
+              ∀ {C'' : Γ.Point},
+                C'' ∈ α → C'' ∉ l → SameSide C'' P l → ∠ B A C ≡ ∠ B' A' C'' →
+                  SameRayPt A' C' C''
   III₅ :
     ∀ {A B C A' B' C' : Γ.Point},
       [A, B] ≡ [A', B'] → [A, C] ≡ [A', C'] → ∠ B A C ≡ ∠ B' A' C' → ∠ A B C ≡ ∠ A' B' C'
@@ -1174,8 +1185,6 @@ theorem seg_cong_trans [IncidentAxioms Γ] [hΓ₃ : CongruenceAxioms Γ] {A'' B
 
 theorem seg_cong_point [hΓ₃ : CongruenceAxioms Γ] : [A, A] ≡ [B, B] := by sorry
 
-theorem seg_cong_comm : [A, B] ≡ [B, A] := by sorry
-
 theorem exists_unique_cong_point [hΓ₁ : IncidentAxioms Γ] [hΓ₃ : CongruenceAxioms Γ] :
   ∀ {A B A'} {l : Γ.Line} {h : Γ.Ray A'},
     A ∈ l → B ∈ l → ∃! B', B' ∈ h ∧ [A, B] ≡ [A', B'] := by
@@ -1187,6 +1196,19 @@ theorem exists_unique_cong_point [hΓ₁ : IncidentAxioms Γ] [hΓ₃ : Congruen
   · exact ⟨hB'h, hABA'B'⟩
   · intro B'' ⟨hB''h, hABA'B''⟩
     rcases exists_not_online_point l with ⟨C', hC'l⟩
+    sorry
+
+theorem seg_cong_comm [hΓ₁ : IncidentAxioms Γ] [hΓ₃ : CongruenceAxioms Γ] : [A, B] ≡ [B, A] := by
+  rcases exists_line_of_point A B with ⟨l, hAl, hBl⟩
+  by_cases h : A = B
+  · subst h
+    exact seg_cong_refl A A
+  · let k : Γ.Ray B := {
+      dir := A
+      neq := Ne.symm h
+    }
+    rcases hΓ₃.III₁ k hAl hBl with ⟨A', hA'k, hABBA'⟩
+    simp only [inRay, PointSameSide] at hA'k
     sorry
 
 class AxiomOfParallelLine (Γ : Geometry) where
