@@ -1042,6 +1042,14 @@ theorem T₅_₁ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
     exact L₇ hbBCD hbABC
   · exact L₇ hbABC hbBCD
 
+theorem T₈_₁ : OppoSide A B l → ∃ C, C ∈ l ∧ A ≺ C ≺ B := by
+  intro h
+  exact h.2.2
+
+theorem T₈_₂ : SameSide A B l → ¬∃ C, C ∈ l ∧ A ≺ C ≺ B := by
+  intro h
+  exact h.2.2
+
 class AxiomOfParallelLine (Γ : Geometry) where
   IV : ∀ {A} {l : Γ.Line} {α : Γ.Plane},
     l ⊂ α → A ∈ α → A ∉ l →
