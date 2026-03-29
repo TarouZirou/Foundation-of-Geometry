@@ -25,6 +25,7 @@ namespace Geometry
 
 variable {Γ : Geometry}
   {A B C D E F G : Γ.Point} {l m n : Γ.Line} {α β γ : Γ.Plane}
+    {A' B' C' : Γ.Point}
 
 
 abbrev onLine (A : Γ.Point) (l : Γ.Line) : Prop := Γ.OnLine A l
@@ -107,7 +108,8 @@ class IncidentAxioms (Γ : Geometry) where
     α ≠ β → A ∈ α → A ∈ β → ∃ B : Γ.Point, A ≠ B ∧ B ∈ α ∧ B ∈ β
   I₈ : ∃ A B C D : Γ.Point, ≠₄ A B C D ∧ ¬Cop A B C D
 
-theorem exist_line_of_forall_point [hΓ : IncidentAxioms Γ] (A : Γ.Point) : ∃ l : Γ.Line, A ∈ l := by
+theorem exists_line_of_forall_point [hΓ : IncidentAxioms Γ] (A : Γ.Point) :
+  ∃ l : Γ.Line, A ∈ l := by
   rcases hΓ.I₈ with ⟨B, C, D, E, hnBCDE, hncop⟩
   by_cases hAB : A = B
   · have hnAC := hnBCDE.1
@@ -128,6 +130,20 @@ theorem exists_not_online_point [hΓ : IncidentAxioms Γ] (l : Γ.Line) : ∃ C,
   have hEl := h E
   exact h₁ ⟨hCl, hDl, hEl⟩
 
+theorem exists_neq_point [hΓ : IncidentAxioms Γ] (A : Γ.Point) : ∃ B, A ≠ B := by
+  rcases exists_line_of_forall_point A with ⟨l, hAl⟩
+  rcases exists_not_online_point l with ⟨B, hnBl⟩
+  use B
+  exact neq_of_online_and_not_online hAl hnBl
+
+theorem exists_line_of_point [hΓ : IncidentAxioms Γ] (A B : Γ.Point) :
+  ∃ l : Γ.Line, A ∈ l ∧ B ∈ l := by
+  by_cases h : A = B
+  · subst h
+    simp only [and_self]
+    exact exists_line_of_forall_point A
+  · exact hΓ.I₁ h
+
 theorem col_4 [hΓ : IncidentAxioms Γ] : A ≠ B → Col A B C → Col A B D → Col A C D := by
   intro hnAB ⟨l, hAl, hBl, hCl⟩ ⟨m, hAm, hBm, hDm⟩
   have hlm := hΓ.I₂ hnAB hAl hBl hAm hBm
@@ -137,7 +153,7 @@ theorem col_4 [hΓ : IncidentAxioms Γ] : A ≠ B → Col A B C → Col A B D �
 theorem col_of_eq [hΓ : IncidentAxioms Γ] : A = B → Col A B C := by
   intro hAB
   by_cases h : A = C
-  · rcases exist_line_of_forall_point A with ⟨l, hAl⟩
+  · rcases exists_line_of_forall_point A with ⟨l, hAl⟩
     use l
     simp only [← hAB, ← h, and_self]
     assumption
@@ -1048,54 +1064,130 @@ structure Ray (Γ : Geometry) (O : Γ.Point) where
   dir : Γ.Point
   neq : O ≠ dir
 
-def PointRay {Γ : Geometry} (O A : Γ.Point) (hOA : O ≠ A) : Ray Γ O where
+def PointRay {Γ : Geometry} (O A : Γ.Point) (hOA : O ≠ A) : Γ.Ray O where
   dir := A
   neq := hOA
 
-def inRay {Γ : Geometry} {O : Γ.Point} (X : Γ.Point) (r : Ray Γ O) : Prop :=
+def inRay {Γ : Geometry} {O : Γ.Point} (X : Γ.Point) (r : Γ.Ray O) : Prop :=
   PointSameSide O r.dir X
 
 notation:50 X:50 "∈" r:50 => inRay X r
 
 structure Angle (Γ : Geometry) (O : Γ.Point) where
-  left : Ray Γ O
-  right : Ray Γ O
+  left : Γ.Ray O
+  right : Γ.Ray O
 
-def angle {Γ : Geometry} {O : Γ.Point} (h k : Ray Γ O) : Angle Γ O where
+def angle {Γ : Geometry} {O : Γ.Point} (h k : Γ.Ray O) : Γ.Angle O where
   left := h
   right := k
 
 def pointAngle {Γ : Geometry} (A O B : Γ.Point)
-    {hOA : O ≠ A} {hOB : O ≠ B} : Angle Γ O where
+    {hOA : O ≠ A} {hOB : O ≠ B} : Γ.Angle O where
   left := PointRay O A hOA
   right := PointRay O B hOB
 notation:50 "∠" "(" h "," k ")" => angle h k
 notation:50 "∠" A:arg O:arg B:arg => pointAngle A O B
 
 abbrev segCong (A A' : Γ.Segment) : Prop := Γ.SegCong A.1 A.2 A'.1 A'.2
-notation:50 "[" A:arg "," B:arg "]" "≡" "[" A':arg "," B':arg "]" => segCong ⟨A, B⟩ ⟨A', B'⟩
+abbrev segCong' (A B A' B' : Γ.Point) : Prop := Γ.SegCong A B A' B'
+notation:50 "[" A:arg "," B:arg "]" "≡" "[" A':arg "," B':arg "]" => segCong' A B A' B'
 
 abbrev angCong := Γ.AngCong
 notation:50 "∠" A:arg B:arg C:arg "≡" "∠" A':arg B':arg C':arg => angCong A B C A' B' C'
 
+def RayInLine {O : Γ.Point} (h : Γ.Ray O) (l : Γ.Line) : Prop := ∀ A, A ∈ h → A ∈ l
+notation:50 h:50 "⊂" l:50 => RayInLine h l
+theorem exists_line_of_ray [hΓ : IncidentAxioms Γ] : ∀ {O} (h : Γ.Ray O), ∃ l, h ⊂ l := by
+  intro O h
+  rcases hΓ.I₁ h.neq with ⟨l, hOl, hdl⟩
+  use l
+  intro A hAl
+  rcases hAl with hOA | hA
+  · subst hOA
+    exact hOl
+  · exact online_of_col h.neq hA.1 hOl hdl
+
+theorem SourceInRay {O : Γ.Point} (h : Γ.Ray O) : O ∈ h := by
+  simp [inRay, PointSameSide]
+
+theorem exists_ray [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] (A : Γ.Point) :
+  ∃ (O : Γ.Point) (h : Γ.Ray O), A ∈ h := by
+  rcases exists_line_of_forall_point A with ⟨l, hAl⟩
+  rcases exists_not_online_point l with ⟨B, hnBl⟩
+  have hnAB : A ≠ B := neq_of_online_and_not_online hAl hnBl
+  use B
+  use {
+    dir := A
+    neq := Ne.symm hnAB
+  }
+  simp only [inRay, PointSameSide]
+  right
+  constructor
+  · rw [col_symm]
+    exact col_of_eq rfl
+  · intro hbABA
+    have hnAA := (neq3_of_bet hbABA).2.2
+    have hAA : A = A := rfl
+    contradiction
+
 class CongruenceAxioms (Γ : Geometry) where
-  III₁ : ∀ {A B A'} {l l': Γ.Line}, A ∈ l → B ∈ l → A' ∈ l' → ∃ B', B ∈ l' ∧ [A, B] ≡ [A', B']
+  III₁ : ∀ {A B A'} {l : Γ.Line} (h : Γ.Ray A'), A ∈ l → B ∈ l → ∃ B', B' ∈ h ∧ [A, B] ≡ [A', B']
   III₂ :
     ∀ {A B A' B' A'' B'' : Γ.Point},
       [A', B'] ≡ [A, B] → [A'', B''] ≡ [A, B] → [A', B'] ≡ [A'', B'']
   III₃ :
-    ∀ {A B C A' B' C'} {l l' : Γ.Line},
-      A ∈ l → B ∈ l → C ∈ l →
-        A' ∈ l' → B' ∈ l' → C' ∈ l' →
-          [A, B] ≡ [A', B'] → [B, C] ≡ [B', C'] → [A, C] ≡ [A', C']
+    ∀ {A B C A' B' C' : Γ.Point},
+      A ≺ B ≺ C → A' ≺ B' ≺ C' →
+        [A, B] ≡ [A', B'] → [B, C] ≡ [B', C'] → [A, C] ≡ [A', C']
   III₄ :
-    ∀ {A B C A' B' P : Γ.Point} {l : Γ.Line} {α : Γ.Plane},
-      ¬Col A B C → l ⊂ α → A' ∈ l → B' ∈ l → A' ≠ B' → P ∈ α → P ∉ l →
-        ∃! C', C' ∈ α ∧ C' ∉ l ∧ SameSide C' P l ∧ ∠ B A C ≡ ∠ B' A' C'
+    (∀ {A B C : Γ.Point}, ∠ A B C ≡ ∠ C B A) ∧
+      ∀ {A B C A' B' P : Γ.Point} {l : Γ.Line} {α : Γ.Plane},
+        ¬Col A B C → l ⊂ α → A' ∈ l → B' ∈ l → A' ≠ B' → P ∈ α → P ∉ l →
+          ∃! C', C' ∈ α ∧ C' ∉ l ∧ SameSide C' P l ∧ ∠ B A C ≡ ∠ B' A' C'
   III₅ :
     ∀ {A B C A' B' C' : Γ.Point},
       [A, B] ≡ [A', B'] → [A, C] ≡ [A', C'] → ∠ B A C ≡ ∠ B' A' C' → ∠ A B C ≡ ∠ A' B' C'
 
+theorem seg_cong_refl [hΓ₁ : IncidentAxioms Γ] [hΓ₃ : CongruenceAxioms Γ] (A B : Γ.Point) :
+  [A, B] ≡ [A, B] := by
+  rcases exists_line_of_point A B with ⟨l, hAl, hBl⟩
+  rcases exists_not_online_point l with ⟨P, hnPl⟩
+  rcases exists_neq_point P with ⟨Q', hnPQ'⟩
+  let h : Γ.Ray P := {
+    dir := Q'
+    neq := hnPQ'
+  }
+  rcases hΓ₃.III₁ h hAl hBl with ⟨Q, hQh, hABPQ⟩
+  exact hΓ₃.III₂ hABPQ hABPQ
+
+theorem seg_cong_symm [IncidentAxioms Γ] [hΓ₃ : CongruenceAxioms Γ] :
+  [A, B] ≡ [A', B'] → [A', B'] ≡ [A, B] := by
+  intro hABA'B'
+  have hA'B'A'B' : [A', B'] ≡ [A', B'] := seg_cong_refl A' B'
+  exact hΓ₃.III₂ hA'B'A'B' hABA'B'
+
+theorem seg_cong_trans [IncidentAxioms Γ] [hΓ₃ : CongruenceAxioms Γ] {A'' B'' : Γ.Point} :
+  [A, B] ≡ [A', B'] → [A', B'] ≡ [A'', B''] → [A, B] ≡ [A'', B''] := by
+  intro hABA'B' hA'B'A''B''
+  apply seg_cong_symm at hA'B'A''B''
+  exact hΓ₃.III₂ hABA'B' hA'B'A''B''
+
+theorem seg_cong_point [hΓ₃ : CongruenceAxioms Γ] : [A, A] ≡ [B, B] := by sorry
+
+theorem seg_cong_comm : [A, B] ≡ [B, A] := by sorry
+
+theorem exists_unique_cong_point [hΓ₁ : IncidentAxioms Γ] [hΓ₃ : CongruenceAxioms Γ] :
+  ∀ {A B A'} {l : Γ.Line} {h : Γ.Ray A'},
+    A ∈ l → B ∈ l → ∃! B', B' ∈ h ∧ [A, B] ≡ [A', B'] := by
+  intro A B A' l h hAl hBl
+  rcases hΓ₃.III₁ h hAl hBl with ⟨B', hB'h, hABA'B'⟩
+  use B'
+  simp only
+  constructor
+  · exact ⟨hB'h, hABA'B'⟩
+  · intro B'' ⟨hB''h, hABA'B''⟩
+    rcases exists_not_online_point l with ⟨C', hC'l⟩
+    sorry
 
 class AxiomOfParallelLine (Γ : Geometry) where
   IV : ∀ {A} {l : Γ.Line} {α : Γ.Plane},
