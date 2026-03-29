@@ -2,6 +2,7 @@ import Mathlib.Logic.Unique
 import Mathlib.Tactic.Use
 import Mathlib.Tactic.ApplyAt
 import Mathlib.Tactic.Check
+import Mathlib.Data.List.Basic
 
 universe u v w
 
@@ -106,7 +107,8 @@ class IncidentAxioms (Γ : Geometry) where
     α ≠ β → A ∈ α → A ∈ β → ∃ B : Γ.Point, A ≠ B ∧ B ∈ α ∧ B ∈ β
   I₈ : ∃ A B C D : Γ.Point, ≠₄ A B C D ∧ ¬Cop A B C D
 
-theorem exist_line_of_forall_point [hΓ : IncidentAxioms Γ] (A : Γ.Point) : ∃ l : Γ.Line, A ∈ l := by
+theorem exists_line_of_forall_point [hΓ : IncidentAxioms Γ] (A : Γ.Point) :
+  ∃ l : Γ.Line, A ∈ l := by
   rcases hΓ.I₈ with ⟨B, C, D, E, hnBCDE, hncop⟩
   by_cases hAB : A = B
   · have hnAC := hnBCDE.1
@@ -136,7 +138,7 @@ theorem col_4 [hΓ : IncidentAxioms Γ] : A ≠ B → Col A B C → Col A B D �
 theorem col_of_eq [hΓ : IncidentAxioms Γ] : A = B → Col A B C := by
   intro hAB
   by_cases h : A = C
-  · rcases exist_line_of_forall_point A with ⟨l, hAl⟩
+  · rcases exists_line_of_forall_point A with ⟨l, hAl⟩
     use l
     simp only [← hAB, ← h, and_self]
     assumption
@@ -1049,6 +1051,992 @@ theorem T₈_₁ : OppoSide A B l → ∃ C, C ∈ l ∧ A ≺ C ≺ B := by
 theorem T₈_₂ : SameSide A B l → ¬∃ C, C ∈ l ∧ A ≺ C ≺ B := by
   intro h
   exact h.2.2
+
+def OnOpenSegment (A X B : Γ.Point) : Prop := A ≺ X ≺ B
+
+def OnClosedSegment (A X B : Γ.Point) : Prop :=
+  X = A ∨ X = B ∨ OnOpenSegment A X B
+
+notation:50 X:50 " ∈ₒ[" A:50 ", " B:50 "]" => OnOpenSegment A X B
+notation:50 X:50 " ∈ₛ[" A:50 ", " B:50 "]" => OnClosedSegment A X B
+
+theorem onClosedSegment_left : A ∈ₛ[A, B] := by
+  left
+  rfl
+
+theorem onClosedSegment_right : B ∈ₛ[A, B] := by
+  right
+  left
+  rfl
+
+theorem onClosedSegment_of_open (h : X ∈ₒ[A, B]) : X ∈ₛ[A, B] := by
+  right
+  right
+  exact h
+
+theorem onClosedSegment_on_line [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
+    A ≠ B → A ∈ l → B ∈ l → X ∈ₛ[A, B] → X ∈ l := by
+  intro hnAB hAl hBl hX
+  rcases hX with rfl | rfl | hXB
+  · exact hAl
+  · exact hBl
+  · exact online_of_col hnAB (col_right_comm.mp (col_of_bet hXB)) hAl hBl
+
+theorem sameSide_symm [hΓ : OrderAxioms Γ] : SameSide A B l → SameSide B A l := by
+  intro h
+  rcases h with ⟨hnAl, hnBl, hno⟩
+  refine ⟨hnBl, hnAl, ?_⟩
+  intro hcross
+  rcases hcross with ⟨C, hCl, hBCA⟩
+  apply hno
+  exact ⟨C, hCl, (bet_symm.mp hBCA)⟩
+
+theorem oppoSide_symm [hΓ : OrderAxioms Γ] : OppoSide A B l → OppoSide B A l := by
+  intro h
+  rcases h with ⟨hnAl, hnBl, hcross⟩
+  rcases hcross with ⟨C, hCl, hACB⟩
+  refine ⟨hnBl, hnAl, ?_⟩
+  exact ⟨C, hCl, (bet_symm.mp hACB)⟩
+
+def SameSideThrough (A B X Y : Γ.Point) : Prop :=
+  A ≠ B ∧ ∃ l : Γ.Line, A ∈ l ∧ B ∈ l ∧ SameSide X Y l
+
+def OppoSideThrough (A B X Y : Γ.Point) : Prop :=
+  A ≠ B ∧ ∃ l : Γ.Line, A ∈ l ∧ B ∈ l ∧ OppoSide X Y l
+
+theorem sameSideThrough_symm [hΓ : OrderAxioms Γ] :
+    SameSideThrough A B X Y → SameSideThrough A B Y X := by
+  intro h
+  rcases h with ⟨hnAB, l, hAl, hBl, hXY⟩
+  exact ⟨hnAB, l, hAl, hBl, sameSide_symm hXY⟩
+
+theorem oppoSideThrough_symm [hΓ : OrderAxioms Γ] :
+    OppoSideThrough A B X Y → OppoSideThrough A B Y X := by
+  intro h
+  rcases h with ⟨hnAB, l, hAl, hBl, hXY⟩
+  exact ⟨hnAB, l, hAl, hBl, oppoSide_symm hXY⟩
+
+theorem not_sameSideThrough_of_on_line [hΓ : IncidentAxioms Γ]
+    (hnAB : A ≠ B) (hAl : A ∈ l) (hBl : B ∈ l) (hXl : X ∈ l) :
+    ¬ SameSideThrough A B X Y := by
+  intro h
+  rcases h with ⟨_, m, hAm, hBm, hsame⟩
+  have hml : m = l := hΓ.I₂ hnAB hAm hBm hAl hBl
+  exact hsame.1 (by simpa [hml] using hXl)
+
+structure BrokenLine (Γ : Geometry) where
+  carrier : List Γ.Point
+  neq : ∀ (n : Fin (carrier.length - 1)),
+    carrier.get ⟨n.1, Nat.lt_of_lt_pred n.isLt⟩ ≠
+      carrier.get ⟨n.1 + 1, (Nat.lt_sub_iff_add_lt).mp n.isLt⟩
+
+namespace BrokenLine
+
+abbrev EdgeIndex (L : Γ.BrokenLine) := Fin (L.carrier.length - 1)
+
+def edgeStart (L : Γ.BrokenLine) (n : L.EdgeIndex) : Γ.Point :=
+  L.carrier.get ⟨n.1, Nat.lt_of_lt_pred n.isLt⟩
+
+def edgeEnd (L : Γ.BrokenLine) (n : L.EdgeIndex) : Γ.Point :=
+  L.carrier.get ⟨n.1 + 1, (Nat.lt_sub_iff_add_lt).mp n.isLt⟩
+
+def InPlane (L : Γ.BrokenLine) (α : Γ.Plane) : Prop :=
+  ∀ n : Fin L.carrier.length, L.carrier.get n ∈ α
+
+def Connects (L : Γ.BrokenLine) (A B : Γ.Point) : Prop :=
+  ∃ h : 0 < L.carrier.length,
+    L.carrier.get ⟨0, h⟩ = A ∧
+      L.carrier.get ⟨L.carrier.length - 1, Nat.sub_lt h (by decide)⟩ = B
+
+end BrokenLine
+
+def PointOnEdge (L : Γ.BrokenLine) (n : L.EdgeIndex) (X : Γ.Point) : Prop :=
+  X = L.edgeStart n ∨ X = L.edgeEnd n ∨ L.edgeStart n ≺ X ≺ L.edgeEnd n
+
+def PointOnBrokenLine (L : Γ.BrokenLine) (X : Γ.Point) : Prop :=
+  ∃ n : L.EdgeIndex, PointOnEdge L n X
+
+notation:50 X:50 " ∈ᵇ " L:50 => PointOnBrokenLine L X
+
+structure Polygon (Γ : Geometry) extends Γ.BrokenLine where
+  nonempty : 0 < carrier.length
+  le_4 : 4 ≤ carrier.length
+  looping : carrier.get ⟨0, nonempty⟩ =
+    carrier.get ⟨carrier.length - 1, Nat.sub_lt nonempty (by decide)⟩
+
+namespace Polygon
+
+abbrev EdgeIndex (P : Γ.Polygon) := P.toBrokenLine.EdgeIndex
+abbrev ConsecutiveIndex (P : Γ.Polygon) := Fin (P.carrier.length - 2)
+
+def edgeStart (P : Γ.Polygon) (n : P.EdgeIndex) : Γ.Point :=
+  P.toBrokenLine.edgeStart n
+
+def edgeEnd (P : Γ.Polygon) (n : P.EdgeIndex) : Γ.Point :=
+  P.toBrokenLine.edgeEnd n
+
+def firstVertexOfTriple (P : Γ.Polygon) (n : P.ConsecutiveIndex) : Γ.Point :=
+  P.carrier.get ⟨n.1, Nat.lt_of_lt_of_le n.isLt (Nat.sub_le _ _)⟩
+
+def secondVertexOfTriple (P : Γ.Polygon) (n : P.ConsecutiveIndex) : Γ.Point :=
+  P.carrier.get
+    ⟨n.1 + 1, Nat.lt_trans (Nat.lt_succ_self (n.1 + 1)) ((Nat.lt_sub_iff_add_lt).mp n.isLt)⟩
+
+def thirdVertexOfTriple (P : Γ.Polygon) (n : P.ConsecutiveIndex) : Γ.Point :=
+  P.carrier.get ⟨n.1 + 2, (Nat.lt_sub_iff_add_lt).mp n.isLt⟩
+
+def InPlane (P : Γ.Polygon) (α : Γ.Plane) : Prop :=
+  P.toBrokenLine.InPlane α
+
+def IsCoplanar (P : Γ.Polygon) : Prop :=
+  ∃ α : Γ.Plane, P.InPlane α
+
+def PointOnEdge (P : Γ.Polygon) (n : P.EdgeIndex) (X : Γ.Point) : Prop :=
+  X ∈ₛ[P.edgeStart n, P.edgeEnd n]
+
+def ProperEdgeIntersection (P : Γ.Polygon) (n m : P.EdgeIndex) (X : Γ.Point) : Prop :=
+  X ∈ₒ[P.edgeStart n, P.edgeEnd n] ∧
+    X ∈ₒ[P.edgeStart m, P.edgeEnd m]
+
+def EdgeAdjacent (P : Γ.Polygon) (n m : P.toBrokenLine.EdgeIndex) : Prop :=
+  n = m ∨
+    n.1 + 1 = m.1 ∨
+      m.1 + 1 = n.1 ∨
+        (n.1 = 0 ∧ m.1 + 1 = P.carrier.length - 1) ∨
+          (m.1 = 0 ∧ n.1 + 1 = P.carrier.length - 1)
+
+theorem properEdgeIntersection_symm
+    (P : Γ.Polygon) (i j : P.EdgeIndex) (X : Γ.Point) :
+    ProperEdgeIntersection P i j X → ProperEdgeIntersection P j i X := by
+  intro h
+  exact ⟨h.2, h.1⟩
+
+theorem pointOnEdge_of_properEdgeIntersection_left
+    (P : Γ.Polygon) (i j : P.EdgeIndex) (X : Γ.Point) :
+    ProperEdgeIntersection P i j X → P.PointOnEdge i X := by
+  intro h
+  exact onClosedSegment_of_open h.1
+
+theorem pointOnEdge_of_properEdgeIntersection_right
+    (P : Γ.Polygon) (i j : P.EdgeIndex) (X : Γ.Point) :
+    ProperEdgeIntersection P i j X → P.PointOnEdge j X := by
+  intro h
+  exact onClosedSegment_of_open h.2
+
+end Polygon
+
+def PointOnPolygon (P : Γ.Polygon) (X : Γ.Point) : Prop :=
+  ∃ n : P.EdgeIndex, P.PointOnEdge n X
+
+notation:50 X:50 " ∈ᵖ " P:50 => PointOnPolygon P X
+
+structure SimplePolygon (Γ : Geometry) extends Γ.Polygon where
+  vertices_nodup : carrier.dropLast.Nodup
+  no_collinear_consecutive : ∀ (n : Fin (carrier.length - 2)),
+    ¬Col
+      (Polygon.firstVertexOfTriple toPolygon n)
+      (Polygon.secondVertexOfTriple toPolygon n)
+      (Polygon.thirdVertexOfTriple toPolygon n)
+  adjacent_intersections :
+    ∀ (n m : Fin (carrier.length - 1)),
+      n ≠ m → Polygon.EdgeAdjacent toPolygon n m →
+        ∀ X,
+          Polygon.PointOnEdge toPolygon n X →
+            Polygon.PointOnEdge toPolygon m X →
+              X = Polygon.edgeStart toPolygon n ∨ X = Polygon.edgeEnd toPolygon n
+  no_incidents : ∀ (n m : Fin (carrier.length - 1)),
+    ¬ Polygon.EdgeAdjacent toPolygon n m →
+      ¬∃ P,
+        carrier.get ⟨n.1, Nat.lt_of_lt_pred n.isLt⟩ ≺
+          P ≺
+            carrier.get ⟨n.1 + 1, (Nat.lt_sub_iff_add_lt).mp n.isLt⟩ ∧
+              carrier.get ⟨m.1, Nat.lt_of_lt_pred m.isLt⟩ ≺
+                P ≺
+                  carrier.get ⟨m.1 + 1, (Nat.lt_sub_iff_add_lt).mp m.isLt⟩
+
+namespace SimplePolygon
+
+def InPlane (P : Γ.SimplePolygon) (α : Γ.Plane) : Prop :=
+  P.toPolygon.InPlane α
+
+def IsCoplanar (P : Γ.SimplePolygon) : Prop :=
+  ∃ α : Γ.Plane, P.InPlane α
+
+end SimplePolygon
+
+def BrokenLine.AvoidsPolygon (L : Γ.BrokenLine) (P : Γ.Polygon) : Prop :=
+  ¬∃ X, X ∈ᵇ L ∧ X ∈ᵖ P
+
+def BrokenLine.CrossesPolygon (L : Γ.BrokenLine) (P : Γ.Polygon) : Prop :=
+  ∃ X, X ∈ᵇ L ∧ X ∈ᵖ P
+
+theorem brokenLine_crossesPolygon_iff_not_avoids (L : Γ.BrokenLine) (P : Γ.Polygon) :
+    L.CrossesPolygon P ↔ ¬L.AvoidsPolygon P := by
+  unfold BrokenLine.CrossesPolygon BrokenLine.AvoidsPolygon
+  constructor
+  · intro h havoids
+    exact havoids h
+  · intro h
+    by_contra hcross
+    exact h hcross
+
+theorem simplePolygon_no_properEdgeIntersection
+    (P : Γ.SimplePolygon) (n m : P.toPolygon.EdgeIndex)
+    (hnm : ¬ Polygon.EdgeAdjacent P.toPolygon n m) :
+    ¬∃ X, Polygon.ProperEdgeIntersection P.toPolygon n m X := by
+  intro h
+  apply P.no_incidents n m hnm
+  rcases h with ⟨X, hX₁, hX₂⟩
+  exact ⟨X, hX₁, hX₂⟩
+
+theorem simplePolygon_adjacent_intersections_are_endpoints
+    (P : Γ.SimplePolygon) (n m : P.toPolygon.EdgeIndex)
+    (hnm : n ≠ m) (hadj : Polygon.EdgeAdjacent P.toPolygon n m) :
+    ∀ X,
+      Polygon.PointOnEdge P.toPolygon n X →
+        Polygon.PointOnEdge P.toPolygon m X →
+          X = Polygon.edgeStart P.toPolygon n ∨ X = Polygon.edgeEnd P.toPolygon n := by
+  exact P.adjacent_intersections n m hnm hadj
+
+structure Triangle (Γ : Geometry) where
+  A : Γ.Point
+  B : Γ.Point
+  C : Γ.Point
+
+def Triangle.InPlane (T : Γ.Triangle) (α : Γ.Plane) : Prop :=
+  T.A ∈ α ∧ T.B ∈ α ∧ T.C ∈ α
+
+def Triangle.Nondegenerate (T : Γ.Triangle) : Prop :=
+  ≠₃ T.A T.B T.C ∧ ¬Col T.A T.B T.C
+
+def TriangleBoundary (T : Γ.Triangle) (X : Γ.Point) : Prop :=
+  X ∈ₛ[T.A, T.B] ∨ X ∈ₛ[T.B, T.C] ∨ X ∈ₛ[T.C, T.A]
+
+def TriangleInside (T : Γ.Triangle) (α : Γ.Plane) (X : Γ.Point) : Prop :=
+  X ∈ α ∧
+    SameSideThrough T.A T.B X T.C ∧
+      SameSideThrough T.B T.C X T.A ∧
+        SameSideThrough T.C T.A X T.B
+
+def TriangleOutside (T : Γ.Triangle) (α : Γ.Plane) (X : Γ.Point) : Prop :=
+  X ∈ α ∧ ¬TriangleBoundary T X ∧ ¬TriangleInside T α X
+
+notation:50 X:50 " ∈∂△ " T:50 => TriangleBoundary T X
+notation:50 X:50 " ∈ᵢ[" T:50 "; " α:50 "]" => TriangleInside T α X
+notation:50 X:50 " ∈ᵉ[" T:50 "; " α:50 "]" => TriangleOutside T α X
+
+theorem triangleInside_mem_plane :
+    X ∈ᵢ[T; α] → X ∈ α := by
+  intro h
+  exact h.1
+
+theorem triangleOutside_mem_plane :
+    X ∈ᵉ[T; α] → X ∈ α := by
+  intro h
+  exact h.1
+
+theorem triangleOutside_not_boundary :
+    X ∈ᵉ[T; α] → ¬ X ∈∂△ T := by
+  intro h
+  exact h.2.1
+
+theorem triangleOutside_not_inside :
+    X ∈ᵉ[T; α] → ¬ X ∈ᵢ[T; α] := by
+  intro h
+  exact h.2.2
+
+theorem triangleInside_not_on_AB [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
+    X ∈ᵢ[T; α] → ¬ X ∈ₛ[T.A, T.B] := by
+  intro hX hseg
+  rcases hX with ⟨_, hAB, _, _⟩
+  rcases hAB with ⟨hnAB, l, hAl, hBl, hsame⟩
+  have hXl : X ∈ l := onClosedSegment_on_line hnAB hAl hBl hseg
+  exact hsame.1 hXl
+
+theorem triangleInside_not_on_BC [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
+    X ∈ᵢ[T; α] → ¬ X ∈ₛ[T.B, T.C] := by
+  intro hX hseg
+  rcases hX with ⟨_, _, hBC, _⟩
+  rcases hBC with ⟨hnBC, l, hBl, hCl, hsame⟩
+  have hXl : X ∈ l := onClosedSegment_on_line hnBC hBl hCl hseg
+  exact hsame.1 hXl
+
+theorem triangleInside_not_on_CA [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
+    X ∈ᵢ[T; α] → ¬ X ∈ₛ[T.C, T.A] := by
+  intro hX hseg
+  rcases hX with ⟨_, _, _, hCA⟩
+  rcases hCA with ⟨hnCA, l, hCl, hAl, hsame⟩
+  have hXl : X ∈ l := onClosedSegment_on_line hnCA hCl hAl hseg
+  exact hsame.1 hXl
+
+theorem triangleInside_not_boundary [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
+    X ∈ᵢ[T; α] → ¬ X ∈∂△ T := by
+  intro hX hB
+  rcases hB with hAB | hBC | hCA
+  · exact triangleInside_not_on_AB hX hAB
+  · exact triangleInside_not_on_BC hX hBC
+  · exact triangleInside_not_on_CA hX hCA
+
+theorem triangleInside_outside_disjoint :
+    X ∈ᵢ[T; α] → ¬ X ∈ᵉ[T; α] := by
+  intro hIn hOut
+  exact hOut.2.2 hIn
+
+theorem triangle_boundary_inside_outside_cover (hXα : X ∈ α) :
+    X ∈∂△ T ∨ X ∈ᵢ[T; α] ∨ X ∈ᵉ[T; α] := by
+  classical
+  by_cases hB : X ∈∂△ T
+  · exact Or.inl hB
+  · by_cases hI : X ∈ᵢ[T; α]
+    · exact Or.inr (Or.inl hI)
+    · exact Or.inr (Or.inr ⟨hXα, hB, hI⟩)
+
+theorem triangle_inside_or_outside_of_not_boundary
+    (hXα : X ∈ α) (hXb : ¬ X ∈∂△ T) :
+    X ∈ᵢ[T; α] ∨ X ∈ᵉ[T; α] := by
+  rcases triangle_boundary_inside_outside_cover (T := T) (α := α) hXα with hB | hI | hO
+  · contradiction
+  · exact Or.inl hI
+  · exact Or.inr hO
+
+theorem triangle_inside_outside_partition
+    (hX : X ∈ α ∧ ¬ X ∈∂△ T) :
+    X ∈ᵢ[T; α] ∨ X ∈ᵉ[T; α] := by
+  exact triangle_inside_or_outside_of_not_boundary (T := T) (α := α) hX.1 hX.2
+
+theorem triangle_inside_outside_not_both :
+    ¬ (X ∈ᵢ[T; α] ∧ X ∈ᵉ[T; α]) := by
+  intro h
+  exact triangleInside_outside_disjoint h.1 h.2
+
+theorem triangle_separation_core [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
+    (∀ X, X ∈ᵢ[T; α] → X ∈ α ∧ ¬ X ∈∂△ T) ∧
+      (∀ X, X ∈ᵉ[T; α] → X ∈ α ∧ ¬ X ∈∂△ T) ∧
+        (∀ X, X ∈ α ∧ ¬ X ∈∂△ T →
+          X ∈ᵢ[T; α] ∨ X ∈ᵉ[T; α]) ∧
+          ∀ X, ¬ (X ∈ᵢ[T; α] ∧ X ∈ᵉ[T; α]) := by
+  constructor
+  · intro X hX
+    exact ⟨triangleInside_mem_plane hX, triangleInside_not_boundary hX⟩
+  constructor
+  · intro X hX
+    exact ⟨triangleOutside_mem_plane hX, triangleOutside_not_boundary hX⟩
+  constructor
+  · intro X hX
+    exact triangle_inside_outside_partition (T := T) (α := α) hX
+  · intro X
+    exact triangle_inside_outside_not_both (T := T) (α := α)
+
+theorem triangleOutside_of_AB_extension [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ]
+    (hplane : T.InPlane α) (hnd : T.Nondegenerate) (hABX : T.A≺T.B≺X) :
+    X ∈ᵉ[T; α] := by
+  rcases hplane with ⟨hAα, hBα, hCα⟩
+  rcases hnd with ⟨hneq, hncol⟩
+  have hnAB : T.A ≠ T.B := hneq.1
+  rcases hΓ₁.I₁ hnAB with ⟨l, hAl, hBl⟩
+  have hXcol : Col T.A T.B X := col_of_bet hABX
+  have hXl : X ∈ l := online_of_col hnAB hXcol hAl hBl
+  have hlα : l ⊂ α := hΓ₁.I₆ hnAB hAl hBl hAα hBα
+  have hXα : X ∈ α := hlα X hXl
+  refine ⟨hXα, ?_, ?_⟩
+  · intro hBd
+    rcases hBd with hABseg | hBCseg | hCAseg
+    · rcases hABseg with hXA | hXB | hAXB
+      · exact (neq3_of_bet hABX).2.2 hXA.symm
+      · exact (neq3_of_bet hABX).2.1 hXB.symm
+      · have hBXA : T.B ≺ X ≺ T.A := (bet_symm).mp hAXB
+        exact ((not_bet_of_bet hABX).1) hBXA
+    · rcases hBCseg with hXB | hXC | hBXC
+      · exact (neq3_of_bet hABX).2.1 hXB.symm
+      · have hABC : Col T.A T.B T.C := by
+          simpa [hXC] using hXcol
+        exact hncol hABC
+      · have hBXCcol : Col T.B X T.C := col_of_bet hBXC
+        have hnXB : X ≠ T.B := by
+          exact Ne.symm ((neq3_of_bet hABX).2.1)
+        rcases hΓ₁.I₁ hnXB with ⟨m, hXm, hBm⟩
+        have hAm : T.A ∈ m := by
+          exact online_of_col hnXB (col_symm.mp hXcol) hXm hBm
+        have hCm : T.C ∈ m := by
+          exact online_of_col hnXB (col_left_comm.mp hBXCcol) hXm hBm
+        exact hncol (col_of_online hAm hBm hCm)
+    · rcases hCAseg with hXC | hXA | hCXA
+      · have hABC : Col T.A T.B T.C := by
+          simpa [hXC] using hXcol
+        exact hncol hABC
+      · exact (neq3_of_bet hABX).2.2 hXA.symm
+      · have hCXAcol : Col T.C X T.A := col_of_bet hCXA
+        have hnXA : X ≠ T.A := by
+          exact Ne.symm ((neq3_of_bet hABX).2.2)
+        rcases hΓ₁.I₁ hnXA with ⟨m, hXm, hAm⟩
+        have hBm : T.B ∈ m := by
+          exact online_of_col hnXA (col_right_rot.mp hXcol) hXm hAm
+        have hCm : T.C ∈ m := by
+          exact online_of_col hnXA ((col_left_comm).mp ((col_symm).mp hCXAcol)) hXm hAm
+        exact hncol (col_of_online hAm hBm hCm)
+  · intro hIn
+    exact not_sameSideThrough_of_on_line
+      (A := T.A) (B := T.B) (X := X) (Y := T.C) hnAB hAl hBl hXl hIn.2.1
+
+theorem triangle_nonempty_outside [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ]
+    (hplane : T.InPlane α) (hnd : T.Nondegenerate) :
+    ∃ X, X ∈ᵉ[T; α] := by
+  have hnAB : T.A ≠ T.B := hnd.1.1
+  rcases hΓ₂.II₂ hnAB with ⟨X, hABX⟩
+  exact ⟨X, triangleOutside_of_AB_extension (T := T) (α := α) hplane hnd hABX⟩
+
+theorem sameSideThrough_of_open_AC_wrt_AB [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ]
+    (T : Γ.Triangle) (α : Γ.Plane) {X : Γ.Point}
+    (hplane : T.InPlane α) (hnd : T.Nondegenerate) (hX : T.A≺X≺T.C) :
+    SameSideThrough T.A T.B X T.C := by
+  rcases hplane with ⟨hAα, hBα, hCα⟩
+  rcases hnd with ⟨hneq, hncol⟩
+  have hnAB : T.A ≠ T.B := hneq.1
+  rcases hΓ₁.I₁ hnAB with ⟨l, hAl, hBl⟩
+  refine ⟨hnAB, l, hAl, hBl, ?_⟩
+  have hnCl : T.C ∉ l := not_online_of_online_and_not_col hncol hAl hBl
+  constructor
+  · intro hXl
+    have hnAX : T.A ≠ X := (neq3_of_bet hX).1
+    have hAXC : Col T.A X T.C := col_of_bet hX
+    have hCl : T.C ∈ l := online_of_col hnAX hAXC hAl hXl
+    exact hnCl hCl
+  constructor
+  · exact hnCl
+  · intro hcross
+    rcases hcross with ⟨D, hDl, hXDC⟩
+    have hnXC : X ≠ T.C := (neq3_of_bet hX).2.1
+    rcases hΓ₁.I₁ hnXC with ⟨m, hXm, hCm⟩
+    have hAXC : Col T.A X T.C := col_of_bet hX
+    have hXDCcol : Col X D T.C := col_of_bet hXDC
+    have hAm : T.A ∈ m := online_of_col hnXC (col_left_rot.mp hAXC) hXm hCm
+    have hDm : D ∈ m := online_of_col hnXC (col_right_comm.mp hXDCcol) hXm hCm
+    have hnAD : T.A ≠ D := by
+      intro hAD
+      subst D
+      have hCXA : T.C ≺ X ≺ T.A := (bet_symm.mp hX)
+      exact ((not_bet_of_bet hCXA).1) hXDC
+    have hml : m = l := hΓ₁.I₂ hnAD hAm hDm hAl hDl
+    have hCl : T.C ∈ l := by simpa [hml] using hCm
+    exact hnCl hCl
+
+theorem sameSideThrough_of_open_BC_wrt_AB [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ]
+    (T : Γ.Triangle) (α : Γ.Plane) {X : Γ.Point}
+    (hplane : T.InPlane α) (hnd : T.Nondegenerate) (hX : T.B≺X≺T.C) :
+    SameSideThrough T.A T.B X T.C := by
+  rcases hplane with ⟨hAα, hBα, hCα⟩
+  rcases hnd with ⟨hneq, hncol⟩
+  have hnAB : T.A ≠ T.B := hneq.1
+  rcases hΓ₁.I₁ hnAB with ⟨l, hAl, hBl⟩
+  refine ⟨hnAB, l, hAl, hBl, ?_⟩
+  have hnCl : T.C ∉ l := not_online_of_online_and_not_col hncol hAl hBl
+  constructor
+  · intro hXl
+    have hnBX : T.B ≠ X := (neq3_of_bet hX).1
+    have hBXC : Col T.B X T.C := col_of_bet hX
+    have hCl : T.C ∈ l := online_of_col hnBX hBXC hBl hXl
+    exact hnCl hCl
+  constructor
+  · exact hnCl
+  · intro hcross
+    rcases hcross with ⟨D, hDl, hXDC⟩
+    have hnXC : X ≠ T.C := (neq3_of_bet hX).2.1
+    rcases hΓ₁.I₁ hnXC with ⟨m, hXm, hCm⟩
+    have hBXC : Col T.B X T.C := col_of_bet hX
+    have hXDCcol : Col X D T.C := col_of_bet hXDC
+    have hBm : T.B ∈ m := online_of_col hnXC (col_left_rot.mp hBXC) hXm hCm
+    have hDm : D ∈ m := online_of_col hnXC (col_right_comm.mp hXDCcol) hXm hCm
+    have hnBD : T.B ≠ D := by
+      intro hBD
+      subst D
+      have hCXB : T.C ≺ X ≺ T.B := (bet_symm.mp hX)
+      exact ((not_bet_of_bet hCXB).1) hXDC
+    have hml : m = l := hΓ₁.I₂ hnBD hBm hDm hBl hDl
+    have hCl : T.C ∈ l := by simpa [hml] using hCm
+    exact hnCl hCl
+
+theorem sameSideThrough_of_open_AB_wrt_BC [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ]
+    (T : Γ.Triangle) (α : Γ.Plane) {X : Γ.Point}
+    (hplane : T.InPlane α) (hnd : T.Nondegenerate) (hX : T.A≺X≺T.B) :
+    SameSideThrough T.B T.C X T.A := by
+  rcases hplane with ⟨hAα, hBα, hCα⟩
+  rcases hnd with ⟨hneq, hncol⟩
+  have hnBC : T.B ≠ T.C := hneq.2.1
+  rcases hΓ₁.I₁ hnBC with ⟨l, hBl, hCl⟩
+  refine ⟨hnBC, l, hBl, hCl, ?_⟩
+  have hnAl : T.A ∉ l := by
+    intro hAl
+    exact hncol (col_of_online hAl hBl hCl)
+  constructor
+  · intro hXl
+    have hnXB : X ≠ T.B := (neq3_of_bet hX).2.1
+    have hAXB : Col T.A X T.B := col_of_bet hX
+    have hAl : T.A ∈ l := online_of_col hnXB (col_left_rot.mp hAXB) hXl hBl
+    exact hnAl hAl
+  constructor
+  · exact hnAl
+  · intro hcross
+    rcases hcross with ⟨D, hDl, hXDA⟩
+    have hnXA : X ≠ T.A := Ne.symm (neq3_of_bet hX).1
+    rcases hΓ₁.I₁ hnXA with ⟨m, hXm, hAm⟩
+    have hAXB : Col T.A X T.B := col_of_bet hX
+    have hXDAcol : Col X D T.A := col_of_bet hXDA
+    have hBm : T.B ∈ m := online_of_col hnXA (col_left_comm.mp hAXB) hXm hAm
+    have hDm : D ∈ m := online_of_col hnXA (col_right_comm.mp hXDAcol) hXm hAm
+    have hnBD : T.B ≠ D := by
+      intro hBD
+      subst D
+      exact ((not_bet_of_bet hXDA).2) hX
+    have hml : m = l := hΓ₁.I₂ hnBD hBm hDm hBl hDl
+    have hAl : T.A ∈ l := by simpa [hml] using hAm
+    exact hnAl hAl
+
+theorem sameSideThrough_of_open_AC_wrt_BC [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ]
+    (T : Γ.Triangle) (α : Γ.Plane) {X : Γ.Point}
+    (hplane : T.InPlane α) (hnd : T.Nondegenerate) (hX : T.A≺X≺T.C) :
+    SameSideThrough T.B T.C X T.A := by
+  rcases hplane with ⟨hAα, hBα, hCα⟩
+  rcases hnd with ⟨hneq, hncol⟩
+  have hnBC : T.B ≠ T.C := hneq.2.1
+  rcases hΓ₁.I₁ hnBC with ⟨l, hBl, hCl⟩
+  refine ⟨hnBC, l, hBl, hCl, ?_⟩
+  have hnAl : T.A ∉ l := by
+    intro hAl
+    exact hncol (col_of_online hAl hBl hCl)
+  constructor
+  · intro hXl
+    have hnXC : X ≠ T.C := (neq3_of_bet hX).2.1
+    have hAXC : Col T.A X T.C := col_of_bet hX
+    have hAl : T.A ∈ l := online_of_col hnXC (col_left_rot.mp hAXC) hXl hCl
+    exact hnAl hAl
+  constructor
+  · exact hnAl
+  · intro hcross
+    rcases hcross with ⟨D, hDl, hXDA⟩
+    have hnXA : X ≠ T.A := Ne.symm (neq3_of_bet hX).1
+    rcases hΓ₁.I₁ hnXA with ⟨m, hXm, hAm⟩
+    have hAXC : Col T.A X T.C := col_of_bet hX
+    have hXDAcol : Col X D T.A := col_of_bet hXDA
+    have hCm : T.C ∈ m := online_of_col hnXA (col_left_comm.mp hAXC) hXm hAm
+    have hDm : D ∈ m := online_of_col hnXA (col_right_comm.mp hXDAcol) hXm hAm
+    have hnCD : T.C ≠ D := by
+      intro hCD
+      subst D
+      exact ((not_bet_of_bet hXDA).2) hX
+    have hml : m = l := hΓ₁.I₂ hnCD hCm hDm hCl hDl
+    have hAl : T.A ∈ l := by simpa [hml] using hAm
+    exact hnAl hAl
+
+theorem sameSideThrough_of_open_AB_wrt_CA [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ]
+    (T : Γ.Triangle) (α : Γ.Plane) {X : Γ.Point}
+    (hplane : T.InPlane α) (hnd : T.Nondegenerate) (hX : T.A≺X≺T.B) :
+    SameSideThrough T.C T.A X T.B := by
+  rcases hplane with ⟨hAα, hBα, hCα⟩
+  rcases hnd with ⟨hneq, hncol⟩
+  have hnCA : T.C ≠ T.A := Ne.symm hneq.2.2
+  rcases hΓ₁.I₁ hnCA with ⟨l, hCl, hAl⟩
+  refine ⟨hnCA, l, hCl, hAl, ?_⟩
+  have hnBl : T.B ∉ l := by
+    intro hBl
+    exact hncol (col_of_online hAl hBl hCl)
+  constructor
+  · intro hXl
+    have hnAX : T.A ≠ X := (neq3_of_bet hX).1
+    have hAXB : Col T.A X T.B := col_of_bet hX
+    have hBl : T.B ∈ l := online_of_col hnAX hAXB hAl hXl
+    exact hnBl hBl
+  constructor
+  · exact hnBl
+  · intro hcross
+    rcases hcross with ⟨D, hDl, hXDB⟩
+    have hnXB : X ≠ T.B := (neq3_of_bet hX).2.1
+    rcases hΓ₁.I₁ hnXB with ⟨m, hXm, hBm⟩
+    have hAXB : Col T.A X T.B := col_of_bet hX
+    have hXDBcol : Col X D T.B := col_of_bet hXDB
+    have hAm : T.A ∈ m := online_of_col hnXB (col_left_rot.mp hAXB) hXm hBm
+    have hDm : D ∈ m := online_of_col hnXB (col_right_comm.mp hXDBcol) hXm hBm
+    have hnAD : T.A ≠ D := by
+      intro hAD
+      subst D
+      have hBXA : T.B ≺ X ≺ T.A := (bet_symm.mp hX)
+      exact ((not_bet_of_bet hBXA).1) hXDB
+    have hml : m = l := hΓ₁.I₂ hnAD hAm hDm hAl hDl
+    have hBl : T.B ∈ l := by simpa [hml] using hBm
+    exact hnBl hBl
+
+theorem sameSideThrough_of_open_BC_wrt_CA [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ]
+    (T : Γ.Triangle) (α : Γ.Plane) {X : Γ.Point}
+    (hplane : T.InPlane α) (hnd : T.Nondegenerate) (hX : T.B≺X≺T.C) :
+    SameSideThrough T.C T.A X T.B := by
+  rcases hplane with ⟨hAα, hBα, hCα⟩
+  rcases hnd with ⟨hneq, hncol⟩
+  have hnCA : T.C ≠ T.A := Ne.symm hneq.2.2
+  rcases hΓ₁.I₁ hnCA with ⟨l, hCl, hAl⟩
+  refine ⟨hnCA, l, hCl, hAl, ?_⟩
+  have hnBl : T.B ∉ l := by
+    intro hBl
+    exact hncol (col_of_online hAl hBl hCl)
+  constructor
+  · intro hXl
+    have hnXC : X ≠ T.C := (neq3_of_bet hX).2.1
+    have hBXC : Col T.B X T.C := col_of_bet hX
+    have hBl : T.B ∈ l := online_of_col hnXC (col_left_rot.mp hBXC) hXl hCl
+    exact hnBl hBl
+  constructor
+  · exact hnBl
+  · intro hcross
+    rcases hcross with ⟨D, hDl, hXDB⟩
+    have hnXB : X ≠ T.B := Ne.symm (neq3_of_bet hX).1
+    rcases hΓ₁.I₁ hnXB with ⟨m, hXm, hBm⟩
+    have hBXC : Col T.B X T.C := col_of_bet hX
+    have hXDBcol : Col X D T.B := col_of_bet hXDB
+    have hCm : T.C ∈ m := online_of_col hnXB (col_left_comm.mp hBXC) hXm hBm
+    have hDm : D ∈ m := online_of_col hnXB (col_right_comm.mp hXDBcol) hXm hBm
+    have hnCD : T.C ≠ D := by
+      intro hCD
+      subst D
+      exact ((not_bet_of_bet hXDB).2) hX
+    have hml : m = l := hΓ₁.I₂ hnCD hCm hDm hCl hDl
+    have hBl : T.B ∈ l := by simpa [hml] using hBm
+    exact hnBl hBl
+
+theorem sameSideThrough_of_open_AC_open_BC_wrt_AB [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ]
+    (T : Γ.Triangle) (α : Γ.Plane) {D E : Γ.Point}
+    (hplane : T.InPlane α) (hnd : T.Nondegenerate) (hD : T.A≺D≺T.C) (hE : T.B≺E≺T.C) :
+    SameSideThrough T.A T.B D E := by
+  rcases hplane with ⟨hAα, hBα, hCα⟩
+  rcases hnd with ⟨hneq, hncol⟩
+  have hnAB : T.A ≠ T.B := hneq.1
+  rcases hΓ₁.I₁ hnAB with ⟨l, hAl, hBl⟩
+  have hlα : l ⊂ α := hΓ₁.I₆ hnAB hAl hBl hAα hBα
+  have hDC0 := sameSideThrough_of_open_AC_wrt_AB (T := T) (α := α)
+    (hplane := ⟨hAα, hBα, hCα⟩) (hnd := ⟨hneq, hncol⟩) hD
+  have hEC0 := sameSideThrough_of_open_BC_wrt_AB (T := T) (α := α)
+    (hplane := ⟨hAα, hBα, hCα⟩) (hnd := ⟨hneq, hncol⟩) hE
+  rcases hDC0 with ⟨_, lD, hAlD, hBlD, hDC⟩
+  rcases hEC0 with ⟨_, lE, hAlE, hBlE, hEC⟩
+  have hlD : lD = l := hΓ₁.I₂ hnAB hAlD hBlD hAl hBl
+  have hlE : lE = l := hΓ₁.I₂ hnAB hAlE hBlE hAl hBl
+  have hnDl : D ∉ l := by simpa [hlD] using hDC.1
+  have hnEl : E ∉ l := by simpa [hlE] using hEC.1
+  have hnCl : T.C ∉ l := not_online_of_online_and_not_col hncol hAl hBl
+  have hnoDC : ¬ ∃ C, C ∈ l ∧ D ≺ C ≺ T.C := by
+    intro h
+    apply hDC.2.2
+    simpa [hlD] using h
+  have hnoEC : ¬ ∃ C, C ∈ l ∧ E ≺ C ≺ T.C := by
+    intro h
+    apply hEC.2.2
+    simpa [hlE] using h
+  refine ⟨hnAB, l, hAl, hBl, ?_⟩
+  constructor
+  · exact hnDl
+  constructor
+  · exact hnEl
+  · intro hcross
+    rcases hcross with ⟨P, hPl, hDPE⟩
+    have hnAC : T.A ≠ T.C := hneq.2.2
+    rcases hΓ₁.I₁ hnAC with ⟨mAC, hAmAC, hCmAC⟩
+    have hADC : Col T.A D T.C := col_of_bet hD
+    have hDmAC : D ∈ mAC := online_of_col hnAC (col_right_comm.mp hADC) hAmAC hCmAC
+    have hmACα : mAC ⊂ α := hΓ₁.I₆ hnAC hAmAC hCmAC hAα hCα
+    have hDα : D ∈ α := hmACα D hDmAC
+    have hnBC : T.B ≠ T.C := hneq.2.1
+    rcases hΓ₁.I₁ hnBC with ⟨mBC, hBmBC, hCmBC⟩
+    have hBEC : Col T.B E T.C := col_of_bet hE
+    have hEmBC : E ∈ mBC := online_of_col hnBC (col_right_comm.mp hBEC) hBmBC hCmBC
+    have hmBCα : mBC ⊂ α := hΓ₁.I₆ hnBC hBmBC hCmBC hBα hCα
+    have hEα : E ∈ α := hmBCα E hEmBC
+    have hncDEC : ¬ Col D E T.C := by
+      intro hDEC
+      have hnDC : D ≠ T.C := (neq3_of_bet hD).2.1
+      rcases hΓ₁.I₁ hnDC with ⟨m, hDm, hCm⟩
+      have hAm : T.A ∈ m := online_of_col hnDC (col_left_rot.mp hADC) hDm hCm
+      have hEm : E ∈ m := online_of_col hnDC (col_right_comm.mp hDEC) hDm hCm
+      have hnEC : E ≠ T.C := (neq3_of_bet hE).2.1
+      have hBm : T.B ∈ m := online_of_col hnEC (col_left_rot.mp hBEC) hEm hCm
+      exact hncol (col_of_online hAm hBm hCm)
+    have hnDE : D ≠ E := by
+      intro hDE
+      subst E
+      exact hncDEC (col_of_eq rfl)
+    have hnEC : E ≠ T.C := (neq3_of_bet hE).2.1
+    have hnDC : D ≠ T.C := (neq3_of_bet hD).2.1
+    have hpasch := hΓ₂.II₄ ⟨hnDE, hnEC, hnDC⟩ hncDEC hlα hDα hEα hCα hnDl hnEl hnCl
+      ⟨P, hPl, hDPE⟩
+    rcases hpasch with hleft | hright
+    · exact hnoDC hleft
+    · exact hnoEC hright
+
+theorem sameSideThrough_of_open_AB_open_AC_wrt_BC [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ]
+    (T : Γ.Triangle) (α : Γ.Plane) {D E : Γ.Point}
+    (hplane : T.InPlane α) (hnd : T.Nondegenerate) (hD : T.A≺D≺T.B) (hE : T.A≺E≺T.C) :
+    SameSideThrough T.B T.C D E := by
+  rcases hplane with ⟨hAα, hBα, hCα⟩
+  rcases hnd with ⟨hneq, hncol⟩
+  have hnBC : T.B ≠ T.C := hneq.2.1
+  rcases hΓ₁.I₁ hnBC with ⟨l, hBl, hCl⟩
+  have hlα : l ⊂ α := hΓ₁.I₆ hnBC hBl hCl hBα hCα
+  have hDA0 := sameSideThrough_of_open_AB_wrt_BC (T := T) (α := α)
+    (hplane := ⟨hAα, hBα, hCα⟩) (hnd := ⟨hneq, hncol⟩) hD
+  have hEA0 := sameSideThrough_of_open_AC_wrt_BC (T := T) (α := α)
+    (hplane := ⟨hAα, hBα, hCα⟩) (hnd := ⟨hneq, hncol⟩) hE
+  rcases hDA0 with ⟨_, lD, hBlD, hClD, hDA⟩
+  rcases hEA0 with ⟨_, lE, hBlE, hClE, hEA⟩
+  have hlD : lD = l := hΓ₁.I₂ hnBC hBlD hClD hBl hCl
+  have hlE : lE = l := hΓ₁.I₂ hnBC hBlE hClE hBl hCl
+  have hnDl : D ∉ l := by simpa [hlD] using hDA.1
+  have hnEl : E ∉ l := by simpa [hlE] using hEA.1
+  have hncBCA : ¬ Col T.B T.C T.A := by
+    intro hBCA
+    exact hncol ((col_left_rot).mpr hBCA)
+  have hnAl : T.A ∉ l := not_online_of_online_and_not_col hncBCA hBl hCl
+  have hnoDA : ¬ ∃ A, A ∈ l ∧ D ≺ A ≺ T.A := by
+    intro h
+    apply hDA.2.2
+    simpa [hlD] using h
+  have hnoEA : ¬ ∃ A, A ∈ l ∧ E ≺ A ≺ T.A := by
+    intro h
+    apply hEA.2.2
+    simpa [hlE] using h
+  refine ⟨hnBC, l, hBl, hCl, ?_⟩
+  constructor
+  · exact hnDl
+  constructor
+  · exact hnEl
+  · intro hcross
+    rcases hcross with ⟨P, hPl, hDPE⟩
+    have hnAB : T.A ≠ T.B := hneq.1
+    rcases hΓ₁.I₁ hnAB with ⟨mAB, hAmAB, hBmAB⟩
+    have hADB : Col T.A D T.B := col_of_bet hD
+    have hDmAB : D ∈ mAB := online_of_col hnAB (col_right_comm.mp hADB) hAmAB hBmAB
+    have hmABα : mAB ⊂ α := hΓ₁.I₆ hnAB hAmAB hBmAB hAα hBα
+    have hDα : D ∈ α := hmABα D hDmAB
+    have hnAC : T.A ≠ T.C := hneq.2.2
+    rcases hΓ₁.I₁ hnAC with ⟨mAC, hAmAC, hCmAC⟩
+    have hAEC : Col T.A E T.C := col_of_bet hE
+    have hEmAC : E ∈ mAC := online_of_col hnAC (col_right_comm.mp hAEC) hAmAC hCmAC
+    have hmACα : mAC ⊂ α := hΓ₁.I₆ hnAC hAmAC hCmAC hAα hCα
+    have hEα : E ∈ α := hmACα E hEmAC
+    have hncDEA : ¬ Col D E T.A := by
+      intro hDEA
+      have hnDA : D ≠ T.A := Ne.symm (neq3_of_bet hD).1
+      rcases hΓ₁.I₁ hnDA with ⟨m, hDm, hAm⟩
+      have hBm : T.B ∈ m := online_of_col hnDA (col_left_comm.mp hADB) hDm hAm
+      have hEm : E ∈ m := online_of_col hnDA (col_right_comm.mp hDEA) hDm hAm
+      have hnEA : E ≠ T.A := Ne.symm (neq3_of_bet hE).1
+      have hCm : T.C ∈ m := online_of_col hnEA (col_left_comm.mp hAEC) hEm hAm
+      exact hncol (col_of_online hAm hBm hCm)
+    have hnDE : D ≠ E := by
+      intro hDE
+      subst E
+      exact hncDEA (col_of_eq rfl)
+    have hnEA : E ≠ T.A := Ne.symm (neq3_of_bet hE).1
+    have hnDA : D ≠ T.A := Ne.symm (neq3_of_bet hD).1
+    have hpasch := hΓ₂.II₄ ⟨hnDE, hnEA, hnDA⟩ hncDEA hlα hDα hEα hAα hnDl hnEl hnAl
+      ⟨P, hPl, hDPE⟩
+    rcases hpasch with hleft | hright
+    · exact hnoDA hleft
+    · exact hnoEA hright
+
+theorem sameSideThrough_of_open_AC_open_AB_wrt_BC [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ]
+    (T : Γ.Triangle) (α : Γ.Plane) {D E : Γ.Point}
+    (hplane : T.InPlane α) (hnd : T.Nondegenerate) (hD : T.A≺D≺T.C) (hE : T.A≺E≺T.B) :
+    SameSideThrough T.B T.C D E := by
+  exact sameSideThrough_symm <|
+    sameSideThrough_of_open_AB_open_AC_wrt_BC (T := T) (α := α) hplane hnd hE hD
+
+theorem sameSideThrough_of_open_AB_open_BC_wrt_CA [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ]
+    (T : Γ.Triangle) (α : Γ.Plane) {D E : Γ.Point}
+    (hplane : T.InPlane α) (hnd : T.Nondegenerate) (hD : T.A≺D≺T.B) (hE : T.B≺E≺T.C) :
+    SameSideThrough T.C T.A D E := by
+  rcases hplane with ⟨hAα, hBα, hCα⟩
+  rcases hnd with ⟨hneq, hncol⟩
+  have hnCA : T.C ≠ T.A := Ne.symm hneq.2.2
+  rcases hΓ₁.I₁ hnCA with ⟨l, hCl, hAl⟩
+  have hlα : l ⊂ α := hΓ₁.I₆ hnCA hCl hAl hCα hAα
+  have hDB0 := sameSideThrough_of_open_AB_wrt_CA (T := T) (α := α)
+    (hplane := ⟨hAα, hBα, hCα⟩) (hnd := ⟨hneq, hncol⟩) hD
+  have hEB0 := sameSideThrough_of_open_BC_wrt_CA (T := T) (α := α)
+    (hplane := ⟨hAα, hBα, hCα⟩) (hnd := ⟨hneq, hncol⟩) hE
+  rcases hDB0 with ⟨_, lD, hClD, hAlD, hDB⟩
+  rcases hEB0 with ⟨_, lE, hClE, hAlE, hEB⟩
+  have hlD : lD = l := hΓ₁.I₂ hnCA hClD hAlD hCl hAl
+  have hlE : lE = l := hΓ₁.I₂ hnCA hClE hAlE hCl hAl
+  have hnDl : D ∉ l := by simpa [hlD] using hDB.1
+  have hnEl : E ∉ l := by simpa [hlE] using hEB.1
+  have hncCAB : ¬ Col T.C T.A T.B := by
+    intro hCAB
+    exact hncol ((col_right_rot).mpr hCAB)
+  have hnBl : T.B ∉ l := not_online_of_online_and_not_col hncCAB hCl hAl
+  have hnoDB : ¬ ∃ B, B ∈ l ∧ D ≺ B ≺ T.B := by
+    intro h
+    apply hDB.2.2
+    simpa [hlD] using h
+  have hnoEB : ¬ ∃ B, B ∈ l ∧ E ≺ B ≺ T.B := by
+    intro h
+    apply hEB.2.2
+    simpa [hlE] using h
+  refine ⟨hnCA, l, hCl, hAl, ?_⟩
+  constructor
+  · exact hnDl
+  constructor
+  · exact hnEl
+  · intro hcross
+    rcases hcross with ⟨P, hPl, hDPE⟩
+    have hnAB : T.A ≠ T.B := hneq.1
+    rcases hΓ₁.I₁ hnAB with ⟨mAB, hAmAB, hBmAB⟩
+    have hADB : Col T.A D T.B := col_of_bet hD
+    have hDmAB : D ∈ mAB := online_of_col hnAB (col_right_comm.mp hADB) hAmAB hBmAB
+    have hmABα : mAB ⊂ α := hΓ₁.I₆ hnAB hAmAB hBmAB hAα hBα
+    have hDα : D ∈ α := hmABα D hDmAB
+    have hnBC : T.B ≠ T.C := hneq.2.1
+    rcases hΓ₁.I₁ hnBC with ⟨mBC, hBmBC, hCmBC⟩
+    have hBEC : Col T.B E T.C := col_of_bet hE
+    have hEmBC : E ∈ mBC := online_of_col hnBC (col_right_comm.mp hBEC) hBmBC hCmBC
+    have hmBCα : mBC ⊂ α := hΓ₁.I₆ hnBC hBmBC hCmBC hBα hCα
+    have hEα : E ∈ α := hmBCα E hEmBC
+    have hncDEB : ¬ Col D E T.B := by
+      intro hDEB
+      have hnDB : D ≠ T.B := (neq3_of_bet hD).2.1
+      rcases hΓ₁.I₁ hnDB with ⟨m, hDm, hBm⟩
+      have hAm : T.A ∈ m := online_of_col hnDB (col_left_rot.mp hADB) hDm hBm
+      have hEm : E ∈ m := online_of_col hnDB (col_right_comm.mp hDEB) hDm hBm
+      have hnEB : E ≠ T.B := Ne.symm (neq3_of_bet hE).1
+      have hCm : T.C ∈ m := online_of_col hnEB (col_left_comm.mp hBEC) hEm hBm
+      exact hncol (col_of_online hAm hBm hCm)
+    have hnDE : D ≠ E := by
+      intro hDE
+      subst E
+      exact hncDEB (col_of_eq rfl)
+    have hnEB : E ≠ T.B := Ne.symm (neq3_of_bet hE).1
+    have hnDB : D ≠ T.B := (neq3_of_bet hD).2.1
+    have hpasch := hΓ₂.II₄ ⟨hnDE, hnEB, hnDB⟩ hncDEB hlα hDα hEα hBα hnDl hnEl hnBl
+      ⟨P, hPl, hDPE⟩
+    rcases hpasch with hleft | hright
+    · exact hnoDB hleft
+    · exact hnoEB hright
+
+theorem sameSideThrough_of_open_BC_open_AB_wrt_CA [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ]
+    (T : Γ.Triangle) (α : Γ.Plane) {D E : Γ.Point}
+    (hplane : T.InPlane α) (hnd : T.Nondegenerate) (hD : T.B≺D≺T.C) (hE : T.A≺E≺T.B) :
+    SameSideThrough T.C T.A D E := by
+  exact sameSideThrough_symm <|
+    sameSideThrough_of_open_AB_open_BC_wrt_CA (T := T) (α := α) hplane hnd hE hD
+
+theorem sameSideThrough_of_open_BC_open_AC_wrt_AB [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ]
+    (T : Γ.Triangle) (α : Γ.Plane) {D E : Γ.Point}
+    (hplane : T.InPlane α) (hnd : T.Nondegenerate) (hD : T.B≺D≺T.C) (hE : T.A≺E≺T.C) :
+    SameSideThrough T.A T.B D E := by
+  exact sameSideThrough_symm <|
+    sameSideThrough_of_open_AC_open_BC_wrt_AB (T := T) (α := α) hplane hnd hE hD
+
+theorem triangle_inner_chord_exists [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ]
+    (T : Γ.Triangle) (hnd : T.Nondegenerate) :
+    ∃ D E X : Γ.Point, T.A≺D≺T.B ∧ T.A≺E≺T.C ∧ D≺X≺E := by
+  have hnAB : T.A ≠ T.B := hnd.1.1
+  have hnAC : T.A ≠ T.C := hnd.1.2.2
+  rcases T₃ T.A T.B hnAB with ⟨D, hD⟩
+  rcases T₃ T.A T.C hnAC with ⟨E, hE⟩
+  have hnDE : D ≠ E := by
+    intro hDE
+    subst E
+    have hnAD : T.A ≠ D := (neq3_of_bet hD).1
+    have hADB : Col T.A D T.B := col_of_bet hD
+    have hADC : Col T.A D T.C := col_of_bet hE
+    have hABC : Col T.A T.B T.C := col_4 hnAD hADB hADC
+    exact hnd.2 hABC
+  rcases T₃ D E hnDE with ⟨X, hX⟩
+  exact ⟨D, E, X, hD, hE, hX⟩
+
+theorem mem_plane_of_open_AB_open_AC_between [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ]
+    (T : Γ.Triangle) (α : Γ.Plane) {D E X : Γ.Point}
+    (hplane : T.InPlane α) (hD : T.A≺D≺T.B) (hE : T.A≺E≺T.C) (hX : D≺X≺E) :
+    X ∈ α := by
+  rcases hplane with ⟨hAα, hBα, hCα⟩
+  have hnAB : T.A ≠ T.B := (neq3_of_bet hD).2.2
+  rcases hΓ₁.I₁ hnAB with ⟨lAB, hAlAB, hBlAB⟩
+  have hADB : Col T.A D T.B := col_of_bet hD
+  have hDlAB : D ∈ lAB := online_of_col hnAB (col_right_comm.mp hADB) hAlAB hBlAB
+  have hlABα : lAB ⊂ α := hΓ₁.I₆ hnAB hAlAB hBlAB hAα hBα
+  have hDα : D ∈ α := hlABα D hDlAB
+  have hnAC : T.A ≠ T.C := (neq3_of_bet hE).2.2
+  rcases hΓ₁.I₁ hnAC with ⟨lAC, hAlAC, hClAC⟩
+  have hAEC : Col T.A E T.C := col_of_bet hE
+  have hElAC : E ∈ lAC := online_of_col hnAC (col_right_comm.mp hAEC) hAlAC hClAC
+  have hlACα : lAC ⊂ α := hΓ₁.I₆ hnAC hAlAC hClAC hAα hCα
+  have hEα : E ∈ α := hlACα E hElAC
+  have hnDE : D ≠ E := (neq3_of_bet hX).2.2
+  rcases hΓ₁.I₁ hnDE with ⟨lDE, hDlDE, hElDE⟩
+  have hDXE : Col D X E := col_of_bet hX
+  have hXlDE : X ∈ lDE := online_of_col hnDE (col_right_comm.mp hDXE) hDlDE hElDE
+  have hlDEα : lDE ⊂ α := hΓ₁.I₆ hnDE hDlDE hElDE hDα hEα
+  exact hlDEα X hXlDE
+
+theorem not_boundary_of_open_AB_open_AC_between [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ]
+    (T : Γ.Triangle) (α : Γ.Plane) {D E X : Γ.Point}
+    (hplane : T.InPlane α) (hnd : T.Nondegenerate)
+    (hD : T.A≺D≺T.B) (hE : T.A≺E≺T.C) (hX : D≺X≺E) :
+    ¬ X ∈∂△ T := by
+  rcases hplane with ⟨hAα, hBα, hCα⟩
+  rcases hnd with ⟨hneq, hncol⟩
+  intro hBd
+  rcases hBd with hAB | hBC | hCA
+  · have hnAB : T.A ≠ T.B := hneq.1
+    rcases hΓ₁.I₁ hnAB with ⟨lAB, hAlAB, hBlAB⟩
+    have hADB : Col T.A D T.B := col_of_bet hD
+    have hDlAB : D ∈ lAB := online_of_col hnAB (col_right_comm.mp hADB) hAlAB hBlAB
+    have hXlAB : X ∈ lAB := onClosedSegment_on_line hnAB hAlAB hBlAB hAB
+    have hnDX : D ≠ X := (neq3_of_bet hX).1
+    rcases hΓ₁.I₁ hnDX with ⟨m, hDm, hXm⟩
+    have hDXE : Col D X E := col_of_bet hX
+    have hEm : E ∈ m := online_of_col hnDX hDXE hDm hXm
+    have hmAB : m = lAB := hΓ₁.I₂ hnDX hDm hXm hDlAB hXlAB
+    have hElAB : E ∈ lAB := by simpa [hmAB] using hEm
+    have hnAE : T.A ≠ E := (neq3_of_bet hE).1
+    have hAEC : Col T.A E T.C := col_of_bet hE
+    have hClAB : T.C ∈ lAB := online_of_col hnAE hAEC hAlAB hElAB
+    exact hncol (col_of_online hAlAB hBlAB hClAB)
+  · have hsame :=
+      sameSideThrough_of_open_AB_open_AC_wrt_BC
+        (T := T) (α := α) ⟨hAα, hBα, hCα⟩ ⟨hneq, hncol⟩ hD hE
+    rcases hsame with ⟨hnBC, l, hBl, hCl, hDE⟩
+    have hXl : X ∈ l := onClosedSegment_on_line hnBC hBl hCl hBC
+    exact hDE.2.2 ⟨X, hXl, hX⟩
+  · have hnCA : T.C ≠ T.A := Ne.symm hneq.2.2
+    rcases hΓ₁.I₁ hnCA with ⟨lCA, hClCA, hAlCA⟩
+    have hAEC : Col T.A E T.C := col_of_bet hE
+    have hElCA : E ∈ lCA := online_of_col hnCA (col_right_rot.mp hAEC) hClCA hAlCA
+    have hXlCA : X ∈ lCA := onClosedSegment_on_line hnCA hClCA hAlCA hCA
+    have hnEX : E ≠ X := Ne.symm (neq3_of_bet hX).2.1
+    rcases hΓ₁.I₁ hnEX with ⟨m, hEm, hXm⟩
+    have hDXE : Col D X E := col_of_bet hX
+    have hDm : D ∈ m := online_of_col hnEX (col_symm.mp hDXE) hEm hXm
+    have hmCA : m = lCA := hΓ₁.I₂ hnEX hEm hXm hElCA hXlCA
+    have hDlCA : D ∈ lCA := by simpa [hmCA] using hDm
+    have hnAD : T.A ≠ D := (neq3_of_bet hD).1
+    have hADB : Col T.A D T.B := col_of_bet hD
+    have hBlCA : T.B ∈ lCA := online_of_col hnAD hADB hAlCA hDlCA
+    exact hncol (col_of_online hAlCA hBlCA hClCA)
+
+theorem triangle_nonboundary_point_exists [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ]
+    (T : Γ.Triangle) (α : Γ.Plane) (hplane : T.InPlane α) (hnd : T.Nondegenerate) :
+    ∃ X, X ∈ α ∧ ¬ X ∈∂△ T := by
+  rcases triangle_inner_chord_exists (T := T) hnd with ⟨D, E, X, hD, hE, hX⟩
+  refine ⟨X, ?_, ?_⟩
+  · exact mem_plane_of_open_AB_open_AC_between (T := T) (α := α) hplane hD hE hX
+  · exact not_boundary_of_open_AB_open_AC_between (T := T) (α := α) hplane hnd hD hE hX
+
+theorem triangle_partition_of_open_AB_open_AC_between [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ]
+    (T : Γ.Triangle) (α : Γ.Plane) {D E X : Γ.Point}
+    (hplane : T.InPlane α) (hnd : T.Nondegenerate)
+    (hD : T.A≺D≺T.B) (hE : T.A≺E≺T.C) (hX : D≺X≺E) :
+    X ∈ᵢ[T; α] ∨ X ∈ᵉ[T; α] := by
+  apply triangle_inside_outside_partition (T := T) (α := α)
+  constructor
+  · exact mem_plane_of_open_AB_open_AC_between (T := T) (α := α) hplane hD hE hX
+  · exact not_boundary_of_open_AB_open_AC_between (T := T) (α := α) hplane hnd hD hE hX
+
 
 class AxiomOfParallelLine (Γ : Geometry) where
   IV : ∀ {A} {l : Γ.Line} {α : Γ.Plane},
