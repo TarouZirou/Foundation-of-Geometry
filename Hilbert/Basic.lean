@@ -1396,7 +1396,7 @@ def RayInLine (Γ : Geometry) (h : Γ.Ray) (l : Γ.Line) := ∀ A, A ∈ h → A
 abbrev rayInLine := Γ.RayInLine
 notation:50 h:50 "⊂" l:50 => rayInLine h l
 
-theorem exists_line_of_ray [hΓ : IncidentAxioms Γ] {h : Γ.Ray} : ∃ (l : Γ.Line), h ⊂ l := by
+theorem exists_line_of_ray [hΓ : IncidentAxioms Γ] (h : Γ.Ray) : ∃ (l : Γ.Line), h ⊂ l := by
   rcases hΓ.I₁ h.source_ne_point with ⟨l, hsl, hpl⟩
   refine ⟨l, ?_⟩
   intro A hA
@@ -1405,7 +1405,7 @@ theorem exists_line_of_ray [hΓ : IncidentAxioms Γ] {h : Γ.Ray} : ∃ (l : Γ.
   exact online_of_col h.source_ne_point hcol hsl hpl
 
 theorem exists_not_onray_and_online_point
-  [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] {h : Γ.Ray} :
+  [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] (h : Γ.Ray) :
     ∃ (A : Γ.Point) (l : Γ.Line), A ∈ l ∧ h ⊂ l ∧ A ∉ h := by
   rcases hΓ₁.I₁ h.source_ne_point with ⟨l, hsl, hpl⟩
   rcases hΓ₂.II₂ (Ne.symm h.source_ne_point) with ⟨A, hb_psA⟩
@@ -1526,6 +1526,42 @@ theorem same_raySet_iff (O A B : Γ.Point) [hΓ₁ : IncidentAxioms Γ] [hΓ₂ 
       exact ⟨hOBB, hnOB⟩
     simpa [RaySet, hnOA] using hmem
 
+theorem exists_ray_of_points [hΓ₁ : IncidentAxioms Γ] (A B : Γ.Point) :
+  ∃ h : Γ.Ray, A = h.source ∧ B ∈ h := by
+  by_cases hAB : A = B
+  · subst hAB
+    rcases exists_neq_point A with ⟨B, hnAB⟩
+    let h : Γ.Ray := {
+      source := A
+      point := B
+      source_ne_point := hnAB
+    }
+    use h
+    simp only [onRay, RaySet, SameSidePoint, ne_eq, Set.mem_setOf_eq, true_or, or_true, and_true,
+      true_and, h]
+    rw [col_right_comm]
+    constructor
+    · exact col_of_eq rfl
+    · exact hnAB
+  · let h : Γ.Ray := {
+      source := A
+      point := B
+      source_ne_point := hAB
+    }
+    use h
+    simp only [onRay, RaySet, SameSidePoint, ne_eq, Set.mem_setOf_eq, or_true, and_true,
+      true_and, h]
+    rw [col_right_comm, col_left_rot]
+    constructor
+    · exact col_of_eq rfl
+    · exact hAB
+
+theorem source_mem_ray [hΓ : IncidentAxioms Γ] (h : Γ.Ray) : h.source ∈ h := by
+  rw [onRay, h.carrier_eq, RaySet]
+  refine ⟨?_, h.source_ne_point⟩
+  refine ⟨?_, Or.inr <| Or.inr <| Or.inl rfl⟩
+  exact col_left_rot.mp (col_of_eq (Γ := Γ) (A := h.source) (B := h.source) (C := h.point) rfl)
+
 structure Angle (Γ : Geometry) where
   left : Γ.Ray
   right : Γ.Ray
@@ -1602,7 +1638,8 @@ def LineInHalfPlane (Γ : Geometry) (l : Γ.Line) (α' : Γ.HalfPlane) := ∀ A,
 def lineInHalfPlane := Γ.LineInHalfPlane
 notation:50 l:50 "⊂" α':50 => lineInHalfPlane l α'
 
-def RayInHalfPlane (Γ : Geometry) (h : Γ.Ray) (α' : Γ.HalfPlane) := ∀ A, A ∈ h → A ∈ α'
+def RayInHalfPlane (Γ : Geometry) (h : Γ.Ray) (α' : Γ.HalfPlane) :=
+  ∀ A, A ∈ h → A = h.source ∨ A ∈ α'
 def rayInHalfPlane := Γ.RayInHalfPlane
 notation:50 h:50 "⊂" α':50 => rayInHalfPlane h α'
 
@@ -1611,7 +1648,7 @@ class CongruenceAxioms (Γ : Geometry) where
     (∀ (A B : Γ.Point), [A, B] ≡ [B, A]) ∧
       ∀ {A B A'} {l : Γ.Line} {h : Γ.Ray},
         A ∈ l → B ∈ l → A' = h.source →
-          ∃! B', B' ∈ h ∧ [A, B] ≡ [A', B']
+          ∃ B', B' ∈ h ∧ [A, B] ≡ [A', B']
   III₂ :
     ∀ {A B A' B' A'' B'' : Γ.Point},
       [A', B'] ≡ [A, B] → [A'', B''] ≡ [A, B] → [A', B'] ≡ [A'', B'']
@@ -1630,6 +1667,18 @@ class CongruenceAxioms (Γ : Geometry) where
   III₅ :
     ∀ {A B C A' B' C' : Γ.Point},
       [A, B] ≡ [A', B'] → [A, C] ≡ [A', C'] → ∠ B A C ≡ ∠ B' A' C' → ∠ A B C ≡ ∠ A' B' C'
+
+theorem exists_segCong_points_onray
+  [hΓ₃ : CongruenceAxioms Γ] :
+    ∀ {A B A'} {l : Γ.Line} {h : Γ.Ray},
+      A ∈ l → B ∈ l → A' = h.source →
+        ∃ B', B' ∈ h ∧ [A, B] ≡ [A', B'] := by
+  exact hΓ₃.III₁.2
+
+theorem seg_cong_Euclid [hΓ₃ : CongruenceAxioms Γ] :
+  ∀ {A B A' B' A'' B'' : Γ.Point},
+    [A', B'] ≡ [A, B] → [A'', B''] ≡ [A, B] → [A', B'] ≡ [A'', B''] := by
+  exact hΓ₃.III₂
 
 noncomputable instance SuppleAngle
   (Γ : Geometry) (a : Γ.Angle) [IncidentAxioms Γ] [OrderAxioms Γ] : Γ.Angle where
