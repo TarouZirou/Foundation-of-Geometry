@@ -1348,9 +1348,8 @@ theorem L₉ [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
         exact col_of_bet hC'.2
       exact online_of_col (Ne.symm hnBD) hcDBC' hDg hBg
     have hl₁g := hΓ₁.I₂ hnCC' hCl₁ hC'.1 hCg hC'g
-    have hBl₁ : B ∈ l₁ := by
-      simpa [hl₁g] using hBg
-    exact hnBl₁ hBl₁
+    subst hl₁g
+    contradiction
   subst hCC'
   rw [bet_symm]
   exact hC'.2
@@ -1374,19 +1373,199 @@ theorem T₈_₂ : SameSide A B l → ¬∃ C, C ∈ l ∧ A ≺ C ≺ B := by
 
 def SameSidePoint (O A B : Γ.Point) : Prop := Col O A B ∧ (O ≺ A ≺ B ∨ O ≺ B ≺ A ∨ O = B ∨ A = B)
 
-def Ray (Γ : Geometry) (O A : Γ.Point) : Set Γ.Point := {X | SameSidePoint O A X}
+def RaySet (Γ : Geometry) (O A : Γ.Point) : Set Γ.Point := {X | SameSidePoint O A X ∧ O ≠ A}
 
-theorem same_ray_iff (O A B : Γ.Point) [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
-  SameSidePoint O A B ↔ Γ.Ray O A = Γ.Ray O B := by
+structure Ray (Γ : Geometry) where
+  source : Γ.Point
+  point : Γ.Point
+  carrier := Γ.RaySet source point
+  source_ne_point : source ≠ point
+
+abbrev onRay (A : Γ.Point) (h : Γ.Ray) : Prop := A ∈ h.carrier
+notation:50 A:50 " ∈ " h:50 => onRay A h
+notation:50 A:50 " ∉ " h:50 => ¬onRay A h
+
+def RayInPlane (Γ : Geometry) (h : Γ.Ray) (α : Γ.Plane) := ∀ A, A ∈ h → A ∈ α
+abbrev rayInPlane := Γ.RayInPlane
+notation:50 h:50 "⊂" α:50 => rayInPlane h α
+
+def RayInLine (Γ : Geometry) (h : Γ.Ray) (l : Γ.Line) := ∀ A, A ∈ h → A ∈ l
+abbrev rayInLine := Γ.RayInLine
+notation:50 h:50 "⊂" l:50 => rayInLine h l
+
+theorem same_raySet_iff (O A B : Γ.Point) [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
+  O ≠ A → O ≠ B → (SameSidePoint O A B ↔ Γ.RaySet O A = Γ.RaySet O B) := by
+  intro hnOA hnOB
+  have transfer :
+      ∀ {P Q X : Γ.Point}, O ≠ P → O ≠ Q →
+        SameSidePoint O P Q → SameSidePoint O P X → SameSidePoint O Q X := by
+    intro P Q X hnOP hnOQ hOPQ hOPX
+    rcases hOPQ with ⟨hcolOPQ, hcasesPQ⟩
+    rcases hOPX with ⟨hcolOPX, hcasesPX⟩
+    refine ⟨col_4 hnOP hcolOPQ hcolOPX, ?_⟩
+    rcases hcasesPQ with hOPQ | hOQP | hOQ | hPQ
+    · rcases hcasesPX with hOPX | hOXP | hOX | hPX
+      · by_cases hQX : Q = X
+        · exact Or.inr <| Or.inr <| Or.inr hQX
+        · have hnQX : Q ≠ X := hQX
+          have hnOX : O ≠ X := (neq3_of_bet hOPX).2.2
+          rcases T₄ (col_4 hnOP hcolOPQ hcolOPX) ⟨hnOQ, hnQX, hnOX⟩ with h | h | h
+          · exact Or.inl h
+          · exact Or.inr <| Or.inl <| bet_symm.mp h
+          · have hXPO : X ≺ P ≺ O := bet_symm.mp hOPX
+            have hPOQ : P ≺ O ≺ Q := (T₅_₂ hXPO h).2
+            exact False.elim ((not_bet_of_bet hOPQ).2 (bet_symm.mp hPOQ))
+      · have hXPQ : X ≺ P ≺ Q := L₉ hOXP hOPQ
+        exact Or.inr <| Or.inl <| (T₅_₁ hOXP hXPQ).1
+      · exact Or.inr <| Or.inr <| Or.inl hOX
+      · subst hPX
+        exact Or.inr <| Or.inl hOPQ
+    · rcases hcasesPX with hOPX | hOXP | hOX | hPX
+      · have hQPX : Q ≺ P ≺ X := L₉ hOQP hOPX
+        exact Or.inl <| (T₅_₁ hOQP hQPX).1
+      · by_cases hQX : Q = X
+        · exact Or.inr <| Or.inr <| Or.inr hQX
+        · have hnQX : Q ≠ X := hQX
+          have hnOX : O ≠ X := (neq3_of_bet hOXP).1
+          rcases T₄ (col_4 hnOP hcolOPQ hcolOPX) ⟨hnOQ, hnQX, hnOX⟩ with h | h | h
+          · exact Or.inl h
+          · exact Or.inr <| Or.inl <| bet_symm.mp h
+          · have hPXO : P ≺ X ≺ O := bet_symm.mp hOXP
+            have hPOQ : P ≺ O ≺ Q := (T₅_₁ hPXO h).2
+            exact False.elim ((not_bet_of_bet hOQP).2 hPOQ)
+      · exact Or.inr <| Or.inr <| Or.inl hOX
+      · subst hPX
+        exact Or.inl hOQP
+    · exact False.elim (hnOQ hOQ)
+    · subst hPQ
+      exact hcasesPX
   constructor
   · intro hOAB
+    have hOBA : SameSidePoint O B A := by
+      rcases hOAB with ⟨hcol, hcases⟩
+      refine ⟨col_right_comm.mp hcol, ?_⟩
+      rcases hcases with h | h | h | h
+      · exact Or.inr <| Or.inl h
+      · exact Or.inl h
+      · exact False.elim (hnOB h)
+      · exact Or.inr <| Or.inr <| Or.inr h.symm
     apply subset_antisymm
-    · intro X
-      simp only [Ray, Set.mem_setOf_eq]
-      intro hOAX
-      sorry
-    · sorry
-  · sorry
+    · intro X hX
+      simp only [RaySet, Set.mem_setOf_eq] at hX ⊢
+      exact ⟨transfer hnOA hnOB hOAB hX.1, hnOB⟩
+    · intro X hX
+      simp only [RaySet, Set.mem_setOf_eq] at hX ⊢
+      exact ⟨transfer hnOB hnOA hOBA hX.1, hnOA⟩
+  · intro hEq
+    have hOBB_col : Col O B B := by
+      exact col_symm.mp (col_of_eq (Γ := Γ) (A := B) (B := B) (C := O) rfl)
+    have hOBB : SameSidePoint O B B := by
+      exact ⟨hOBB_col, Or.inr <| Or.inr <| Or.inr rfl⟩
+    have hmem : B ∈ Γ.RaySet O A := by
+      rw [hEq]
+      simp only [RaySet, Set.mem_setOf_eq]
+      exact ⟨hOBB, hnOB⟩
+    simpa [RaySet, hnOA] using hmem
+
+structure Angle (Γ : Geometry) where
+  left : Γ.Ray
+  right : Γ.Ray
+  source := left.source
+  same_source : left.source = right.source
+
+abbrev sameSource (h k : Γ.Ray) := h.source = k.source
+
+abbrev mkAngle (h k : Γ.Ray) (same : h.source = k.source) : Angle Γ := {
+  left := h
+  right := k
+  same_source := same
+}
+
+abbrev segCong (A B A' B' : Γ.Point) := Γ.SegCong A B A' B'
+notation:50 "[" A:50 "," B:50 "]" "≡" "[" A':50 "," B':50 "]" => segCong A B A' B'
+
+abbrev angCong (A O B A' O' B' : Γ.Point) :=
+  Γ.AngCong A O B A' O' B'
+notation:50 "∠" A:arg O:arg B:arg "≡" "∠" A':arg O':arg B':arg => angCong A O B A' O' B'
+
+abbrev AngleCong (a b : Angle Γ) : Prop :=
+  ∀ {A B A' B'}, A ∈ a.left → A' ∈ b.left → B ∈ a.right → B' ∈ b.right →
+    ∠ A a.source B ≡ ∠ A' b.source B'
+
+abbrev rayAngleCong (h k h' k' : Γ.Ray) : Prop :=
+  ∃ hs : sameSource h k, ∃ hs' : sameSource h' k',
+    AngleCong (mkAngle h k hs) (mkAngle h' k' hs')
+
+syntax:arg "∠" "(" term ", " term ")" : term
+macro_rules
+  | `(∠ ($h, $k)) => `(mkAngle $h $k ‹sameSource $h $k›)
+
+syntax:50 "∠" "(" term ", " term ")" "≡" "∠" "(" term ", " term ")" : term
+macro_rules
+  | `(∠ ($h, $k) ≡ ∠ ($h', $k')) => `(rayAngleCong $h $k $h' $k')
+
+theorem angleCong_iff
+  {h k h' k' : Γ.Ray} {h_s_hk : h.source = k.source} {h_s_h'k' : h'.source = k'.source} :
+    ∠ (h, k) ≡ ∠ (h', k') ↔
+      ∀ {A B A' B'}, A ∈ h → A' ∈ h' → B ∈ k → B' ∈ k' →
+        ∠ A (∠ (h, k)).source B ≡ ∠ A' (∠ (h', k')).source B' := by
+  constructor
+  · rintro ⟨hs, hs', hcong⟩
+    intro A B A' B' hA hA' hB hB'
+    exact hcong hA hA' hB hB'
+  · intro hcong
+    refine ⟨h_s_hk, h_s_h'k', ?_⟩
+    intro A B A' B' hA hA' hB hB'
+    exact hcong hA hA' hB hB'
+
+def HalfPlaneSet (Γ : Geometry) (l : Γ.Line) (A : Γ.Point) : Set Γ.Point :=
+  {B | A ∉ l ∧ SameSide A B l}
+
+structure HalfPlane (Γ : Geometry) where
+  base : Γ.Plane
+  boundary : Γ.Line
+  bound_in_base : boundary ⊂ base
+  point : Γ.Point
+  point_not_in_boundary : point ∉ boundary
+  carrier := Γ.HalfPlaneSet boundary point
+
+abbrev onHalfPlane (A : Γ.Point) (α : Γ.HalfPlane) : Prop := A ∈ α.carrier
+notation:50 A:50 " ∈ " α:50 => onHalfPlane A α
+notation:50 A:50 " ∉ " α:50 => ¬onHalfPlane A α
+
+def HalfPlaneInPlane (Γ : Geometry) (α : Γ.HalfPlane) (α' : Γ.Plane) := ∀ A, A ∈ α → A ∈ α'
+def halfPlaneInPlane := Γ.HalfPlaneInPlane
+notation:50 α:50 "⊂" α':50 => halfPlaneInPlane α α'
+
+def LineInHalfPlane (Γ : Geometry) (l : Γ.Line) (α' : Γ.HalfPlane) := ∀ A, A ∈ l → A ∈ α'
+def lineInHalfPlane := Γ.LineInHalfPlane
+notation:50 l:50 "⊂" α':50 => lineInHalfPlane l α'
+
+def RayInHalfPlane (Γ : Geometry) (h : Γ.Ray) (α' : Γ.HalfPlane) := ∀ A, A ∈ h → A ∈ α'
+def rayInHalfPlane := Γ.RayInHalfPlane
+notation:50 h:50 "⊂" α':50 => rayInHalfPlane h α'
+
+class CongruenceAxioms (Γ : Geometry) where
+  III₁ :
+    ∀ {A B A' B₀} {l : Γ.Line},
+      A ∈ l → B ∈ l →
+        ∃! B', B' ∈ Γ.RaySet A B₀ ∧ [A, B] ≡ [A', B']
+  III₂ :
+    ∀ {A B A' B' A'' B'' : Γ.Point},
+      [A', B'] ≡ [A, B] → [A'', B''] ≡ [A, B] → [A', B'] ≡ [A'', B'']
+  III₃ :
+    ∀ {A B C A' B' C' : Γ.Point},
+      A ≺ B ≺ C → A' ≺ B' ≺ C' →
+        [A, B] ≡ [A', B'] → [B, C] ≡ [B', C'] → [A, C] ≡ [A', C']
+  III₄ :
+    ∀ {h k h' : Γ.Ray} {α : Γ.Plane} {α' : Γ.HalfPlane},
+      sameSource h k → h ⊂ α → k ⊂ α → h' ⊂ α'.boundary →
+        ∃ k' : Γ.Ray, k' ⊂ α' ∧ sameSource h' k' ∧ ∠ (h, k) ≡ ∠ (h', k') ∧
+          ∀ k'' : Γ.Ray, k'' ⊂ α' → sameSource h' k'' → ∠ (h, k) ≡ ∠ (h', k'') →
+            k'.carrier = k''.carrier
+  III₅ :
+    ∀ {A B C A' B' C' : Γ.Point},
+      [A, B] ≡ [A', B'] → [A, C] ≡ [A', C'] → ∠ B A C ≡ ∠ B' A' C' → ∠ A B C ≡ ∠ A' B' C'
 
 class AxiomOfParallelLine (Γ : Geometry) where
   IV : ∀ {A} {l : Γ.Line} {α : Γ.Plane},
