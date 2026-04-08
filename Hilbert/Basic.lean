@@ -1372,13 +1372,16 @@ theorem T₈_₂ : SameSide A B l → ¬∃ C, C ∈ l ∧ A ≺ C ≺ B := by
   exact h.2.2
 
 def SameSidePoint (O A B : Γ.Point) : Prop := Col O A B ∧ (O ≺ A ≺ B ∨ O ≺ B ≺ A ∨ O = B ∨ A = B)
+def OppoSidePoint (O A B : Γ.Point) : Prop := Col O A B ∧ A ≺ O ≺ B
 
 def RaySet (Γ : Geometry) (O A : Γ.Point) : Set Γ.Point := {X | SameSidePoint O A X ∧ O ≠ A}
+def OppoRaySet (Γ : Geometry) (O A : Γ.Point) : Set Γ.Point := {X | OppoSidePoint O A X ∨ O = X}
 
 structure Ray (Γ : Geometry) where
   source : Γ.Point
   point : Γ.Point
-  carrier := Γ.RaySet source point
+  carrier : Set Γ.Point := Γ.RaySet source point
+  carrier_eq : carrier = Γ.RaySet source point := by rfl
   source_ne_point : source ≠ point
 
 abbrev onRay (A : Γ.Point) (h : Γ.Ray) : Prop := A ∈ h.carrier
@@ -1392,6 +1395,61 @@ notation:50 h:50 "⊂" α:50 => rayInPlane h α
 def RayInLine (Γ : Geometry) (h : Γ.Ray) (l : Γ.Line) := ∀ A, A ∈ h → A ∈ l
 abbrev rayInLine := Γ.RayInLine
 notation:50 h:50 "⊂" l:50 => rayInLine h l
+
+theorem exists_line_of_ray [hΓ : IncidentAxioms Γ] {h : Γ.Ray} : ∃ (l : Γ.Line), h ⊂ l := by
+  rcases hΓ.I₁ h.source_ne_point with ⟨l, hsl, hpl⟩
+  refine ⟨l, ?_⟩
+  intro A hA
+  rw [onRay, h.carrier_eq, RaySet] at hA
+  have hcol : Col h.source h.point A := hA.1.1
+  exact online_of_col h.source_ne_point hcol hsl hpl
+
+theorem exists_not_onray_and_online_point
+  [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] {h : Γ.Ray} :
+    ∃ (A : Γ.Point) (l : Γ.Line), A ∈ l ∧ h ⊂ l ∧ A ∉ h := by
+  rcases hΓ₁.I₁ h.source_ne_point with ⟨l, hsl, hpl⟩
+  rcases hΓ₂.II₂ (Ne.symm h.source_ne_point) with ⟨A, hb_psA⟩
+  use A
+  use l
+  have hcpsa := col_of_bet hb_psA
+  have hAl := online_of_col (Ne.symm h.source_ne_point) hcpsa hpl hsl
+  refine ⟨hAl, ?_, ?_⟩
+  · intro B hB
+    rw [onRay, h.carrier_eq, RaySet] at hB
+    exact online_of_col h.source_ne_point hB.1.1 hsl hpl
+  · intro hAh
+    rw [onRay, h.carrier_eq, RaySet] at hAh
+    rcases hAh with ⟨⟨_, hcases⟩, _⟩
+    have hnot₁ : ¬ h.source ≺ h.point ≺ A := by
+      have hAsp : A ≺ h.source ≺ h.point := (bet_symm.mp hb_psA)
+      exact (not_bet_of_bet hAsp).1
+    have hnot₂ : ¬ h.source ≺ A ≺ h.point := by
+      exact (not_bet_of_bet hb_psA).1
+    have hnSA : h.source ≠ A := (neq3_of_bet hb_psA).2.1
+    have hnPA : h.point ≠ A := (neq3_of_bet hb_psA).2.2
+    rcases hcases with hcase | hcase | hcase | hcase
+    · exact hnot₁ hcase
+    · exact hnot₂ hcase
+    · exact hnSA hcase
+    · exact hnPA hcase
+
+noncomputable instance OppoRay (Γ : Geometry) (h : Γ.Ray) [IncidentAxioms Γ] [OrderAxioms Γ] : Γ.Ray where
+  source := h.source
+  point := Classical.choose (exists_not_onray_and_online_point (Γ := Γ) (h := h))
+  source_ne_point := by
+    let A := Classical.choose (exists_not_onray_and_online_point (Γ := Γ) (h := h))
+    have hA_notin : A ∉ h := by
+      rcases Classical.choose_spec (exists_not_onray_and_online_point (Γ := Γ) (h := h)) with
+        ⟨l, hAl, hhl, hA_notin⟩
+      exact hA_notin
+    have hs_in : h.source ∈ h := by
+      rw [onRay, h.carrier_eq, RaySet]
+      refine ⟨?_, h.source_ne_point⟩
+      refine ⟨?_, Or.inr <| Or.inr <| Or.inl rfl⟩
+      exact col_left_rot.mp (col_of_eq (Γ := Γ) (A := h.source) (B := h.source) (C := h.point) rfl)
+    intro hEq
+    apply hA_notin
+    simpa [A, hEq] using hs_in
 
 theorem same_raySet_iff (O A B : Γ.Point) [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] :
   O ≠ A → O ≠ B → (SameSidePoint O A B ↔ Γ.RaySet O A = Γ.RaySet O B) := by
@@ -1491,6 +1549,7 @@ notation:50 "∠" A:arg O:arg B:arg "≡" "∠" A':arg O':arg B':arg => angCong 
 abbrev AngleCong (a b : Angle Γ) : Prop :=
   ∀ {A B A' B'}, A ∈ a.left → A' ∈ b.left → B ∈ a.right → B' ∈ b.right →
     ∠ A a.source B ≡ ∠ A' b.source B'
+notation:50 a:50 "≡" b:50 => AngleCong a b
 
 abbrev rayAngleCong (h k h' k' : Γ.Ray) : Prop :=
   ∃ hs : sameSource h k, ∃ hs' : sameSource h' k',
@@ -1503,6 +1562,7 @@ macro_rules
 syntax:50 "∠" "(" term ", " term ")" "≡" "∠" "(" term ", " term ")" : term
 macro_rules
   | `(∠ ($h, $k) ≡ ∠ ($h', $k')) => `(rayAngleCong $h $k $h' $k')
+
 
 theorem angleCong_iff
   {h k h' k' : Γ.Ray} {h_s_hk : h.source = k.source} {h_s_h'k' : h'.source = k'.source} :
@@ -1547,9 +1607,9 @@ notation:50 h:50 "⊂" α':50 => rayInHalfPlane h α'
 
 class CongruenceAxioms (Γ : Geometry) where
   III₁ :
-    ∀ {A B A' B₀} {l : Γ.Line},
-      A ∈ l → B ∈ l →
-        ∃! B', B' ∈ Γ.RaySet A B₀ ∧ [A, B] ≡ [A', B']
+    ∀ {A B A'} {l : Γ.Line} {h : Γ.Ray},
+      A ∈ l → B ∈ l → A' = h.source →
+        ∃! B', B' ∈ h ∧ [A, B] ≡ [A', B']
   III₂ :
     ∀ {A B A' B' A'' B'' : Γ.Point},
       [A', B'] ≡ [A, B] → [A'', B''] ≡ [A, B] → [A', B'] ≡ [A'', B'']
@@ -1566,6 +1626,24 @@ class CongruenceAxioms (Γ : Geometry) where
   III₅ :
     ∀ {A B C A' B' C' : Γ.Point},
       [A, B] ≡ [A', B'] → [A, C] ≡ [A', C'] → ∠ B A C ≡ ∠ B' A' C' → ∠ A B C ≡ ∠ A' B' C'
+
+noncomputable instance SuppleAngle
+  (Γ : Geometry) (a : Γ.Angle) [IncidentAxioms Γ] [OrderAxioms Γ] : Γ.Angle where
+  left := a.left
+  right := Γ.OppoRay a.right
+  same_source := by
+    simp only [OppoRay]
+    exact a.same_source
+
+noncomputable instance VertAngle
+  (Γ : Geometry) (a : Γ.Angle) [IncidentAxioms Γ] [OrderAxioms Γ] : Γ.Angle where
+  left := Γ.OppoRay a.left
+  right := Γ.OppoRay a.right
+  same_source := by
+    simp only [OppoRay]
+    exact a.same_source
+
+def RightAngle [IncidentAxioms Γ] [OrderAxioms Γ] (a : Γ.Angle) := a ≡ Γ.SuppleAngle a
 
 class AxiomOfParallelLine (Γ : Geometry) where
   IV : ∀ {A} {l : Γ.Line} {α : Γ.Plane},
