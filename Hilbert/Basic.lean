@@ -1433,7 +1433,8 @@ theorem exists_not_onray_and_online_point
     · exact hnSA hcase
     · exact hnPA hcase
 
-noncomputable instance OppoRay (Γ : Geometry) (h : Γ.Ray) [IncidentAxioms Γ] [OrderAxioms Γ] : Γ.Ray where
+noncomputable instance OppoRay
+  (Γ : Geometry) (h : Γ.Ray) [IncidentAxioms Γ] [OrderAxioms Γ] : Γ.Ray where
   source := h.source
   point := Classical.choose (exists_not_onray_and_online_point (Γ := Γ) (h := h))
   source_ne_point := by
@@ -1607,9 +1608,10 @@ notation:50 h:50 "⊂" α':50 => rayInHalfPlane h α'
 
 class CongruenceAxioms (Γ : Geometry) where
   III₁ :
-    ∀ {A B A'} {l : Γ.Line} {h : Γ.Ray},
-      A ∈ l → B ∈ l → A' = h.source →
-        ∃! B', B' ∈ h ∧ [A, B] ≡ [A', B']
+    (∀ (A B : Γ.Point), [A, B] ≡ [B, A]) ∧
+      ∀ {A B A'} {l : Γ.Line} {h : Γ.Ray},
+        A ∈ l → B ∈ l → A' = h.source →
+          ∃! B', B' ∈ h ∧ [A, B] ≡ [A', B']
   III₂ :
     ∀ {A B A' B' A'' B'' : Γ.Point},
       [A', B'] ≡ [A, B] → [A'', B''] ≡ [A, B] → [A', B'] ≡ [A'', B'']
@@ -1618,11 +1620,13 @@ class CongruenceAxioms (Γ : Geometry) where
       A ≺ B ≺ C → A' ≺ B' ≺ C' →
         [A, B] ≡ [A', B'] → [B, C] ≡ [B', C'] → [A, C] ≡ [A', C']
   III₄ :
-    ∀ {h k h' : Γ.Ray} {α : Γ.Plane} {α' : Γ.HalfPlane},
-      sameSource h k → h ⊂ α → k ⊂ α → h' ⊂ α'.boundary →
-        ∃ k' : Γ.Ray, k' ⊂ α' ∧ sameSource h' k' ∧ ∠ (h, k) ≡ ∠ (h', k') ∧
-          ∀ k'' : Γ.Ray, k'' ⊂ α' → sameSource h' k'' → ∠ (h, k) ≡ ∠ (h', k'') →
-            k'.carrier = k''.carrier
+    (∀ (h k : Γ.Ray), sameSource h k → ∠ (h, k) ≡ ∠ (h, k)) ∧
+      (∀ (h k : Γ.Ray), sameSource h k → ∠ (h, k) ≡ ∠ (k, h)) ∧
+        ∀ {h k h' : Γ.Ray} {α : Γ.Plane} {α' : Γ.HalfPlane},
+          sameSource h k → h ⊂ α → k ⊂ α → h' ⊂ α'.boundary →
+            ∃ k' : Γ.Ray, k' ⊂ α' ∧ sameSource h' k' ∧ ∠ (h, k) ≡ ∠ (h', k') ∧
+              ∀ k'' : Γ.Ray, k'' ⊂ α' → sameSource h' k'' → ∠ (h, k) ≡ ∠ (h', k'') →
+                k'.carrier = k''.carrier
   III₅ :
     ∀ {A B C A' B' C' : Γ.Point},
       [A, B] ≡ [A', B'] → [A, C] ≡ [A', C'] → ∠ B A C ≡ ∠ B' A' C' → ∠ A B C ≡ ∠ A' B' C'
