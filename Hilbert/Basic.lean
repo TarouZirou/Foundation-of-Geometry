@@ -1566,7 +1566,7 @@ structure Angle (Γ : Geometry) where
   left : Γ.Ray
   right : Γ.Ray
   source := left.source
-  same_source : left.source = right.source
+  same_source : left.source = right.source := by assumption
 
 abbrev sameSource (h k : Γ.Ray) := h.source = k.source
 
@@ -1602,7 +1602,7 @@ macro_rules
 
 
 theorem angleCong_iff
-  {h k h' k' : Γ.Ray} {h_s_hk : h.source = k.source} {h_s_h'k' : h'.source = k'.source} :
+  {h k h' k' : Γ.Ray} (h_s_hk : h.source = k.source) (h_s_h'k' : h'.source = k'.source) :
     ∠ (h, k) ≡ ∠ (h', k') ↔
       ∀ {A B A' B'}, A ∈ h → A' ∈ h' → B ∈ k → B' ∈ k' →
         ∠ A (∠ (h, k)).source B ≡ ∠ A' (∠ (h', k')).source B' := by
@@ -1668,6 +1668,10 @@ class CongruenceAxioms (Γ : Geometry) where
     ∀ {A B C A' B' C' : Γ.Point},
       [A, B] ≡ [A', B'] → [A, C] ≡ [A', C'] → ∠ B A C ≡ ∠ B' A' C' → ∠ A B C ≡ ∠ A' B' C'
 
+theorem cong_SAS [hΓ : CongruenceAxioms Γ] {A B C A' B' C' : Γ.Point} :
+  [A, B] ≡ [A', B'] → [A, C] ≡ [A', C'] → ∠ B A C ≡ ∠ B' A' C' → ∠ A B C ≡ ∠ A' B' C' :=
+  hΓ.III₅
+
 theorem exists_segCong_points_onray
   [hΓ₃ : CongruenceAxioms Γ] :
     ∀ {A B A'} {l : Γ.Line} {h : Γ.Ray},
@@ -1675,10 +1679,278 @@ theorem exists_segCong_points_onray
         ∃ B', B' ∈ h ∧ [A, B] ≡ [A', B'] := by
   exact hΓ₃.III₁.2
 
+theorem ray_in_line_of_source_and_point
+  [IncidentAxioms Γ] {h : Γ.Ray} {l : Γ.Line} :
+    h.source ∈ l → h.point ∈ l → h ⊂ l := by
+  intro hsl hpl X hX
+  rw [onRay, h.carrier_eq, RaySet] at hX
+  exact online_of_col h.source_ne_point hX.1.1 hsl hpl
+
+theorem sameSidePoint_of_mem_same_ray
+  [IncidentAxioms Γ] [OrderAxioms Γ] {h : Γ.Ray} {A B : Γ.Point} :
+    A ∈ h → B ∈ h → h.source ≠ A → SameSidePoint h.source A B := by
+  intro hAh hBh hnSA
+  rw [onRay, h.carrier_eq] at hAh hBh
+  have hAh' := hAh
+  rw [RaySet, Set.mem_setOf_eq] at hAh'
+  have hEq :
+      Γ.RaySet h.source h.point = Γ.RaySet h.source A :=
+    (same_raySet_iff h.source h.point A h.source_ne_point hnSA).mp hAh'.1
+  have hBmem : B ∈ Γ.RaySet h.source A := by
+    rw [← hEq]
+    exact hBh
+  have hBmem' := hBmem
+  rw [RaySet, Set.mem_setOf_eq] at hBmem'
+  exact hBmem'.1
+
+theorem not_source_between_of_same_ray
+  [IncidentAxioms Γ] [OrderAxioms Γ] {h : Γ.Ray} {A B : Γ.Point} :
+    A ∈ h → B ∈ h → h.source ≠ A → ¬ A ≺ h.source ≺ B := by
+  intro hAh hBh hnSA hASB
+  have hsame := sameSidePoint_of_mem_same_ray hAh hBh hnSA
+  rcases hsame with ⟨_, hcases⟩
+  rcases hcases with h1 | h2 | h3 | h4
+  · have hBAS : B ≺ A ≺ h.source := bet_symm.mp h1
+    exact (not_bet_of_bet hBAS).1 hASB
+  · exact (not_bet_of_bet h2).2 hASB
+  · exact (neq3_of_bet hASB).2.1 h3
+  · exact (neq3_of_bet hASB).2.2 h4
+
+theorem sameSide_noncol_trans
+  [OrderAxioms Γ] {A B C : Γ.Point} {l : Γ.Line} {α : Γ.Plane} :
+    PointDistinct3 A B C → ¬Col A B C →
+      l ⊂ α → A ∈ α → B ∈ α → C ∈ α →
+        SameSide A B l → SameSide B C l → SameSide A C l := by
+  intro hnd hnc hlα hAα hBα hCα hAB hBC
+  rcases hAB with ⟨hnAl, hnBl, hnoAB⟩
+  rcases hBC with ⟨_, hnCl, hnoBC⟩
+  have hnd' : PointDistinct3 A C B := ⟨hnd.2.2, (Ne.symm hnd.2.1), hnd.1⟩
+  have hnc' : ¬Col A C B := by
+    intro hc
+    exact hnc ((col_right_comm).2 hc)
+  have hnoCB : ¬∃ F, F ∈ l ∧ C ≺ F ≺ B := by
+    intro h
+    rcases h with ⟨F, hFl, hCFB⟩
+    exact hnoBC ⟨F, hFl, bet_symm.mp hCFB⟩
+  refine ⟨hnAl, hnCl, ?_⟩
+  exact C₁_₄ hnd' hnc' hlα hAα hCα hBα hnAl hnCl hnBl hnoAB hnoCB
+
+theorem sameSide_of_points_on_ray_wrt_transversal
+  [IncidentAxioms Γ] [OrderAxioms Γ]
+  {h : Γ.Ray} {l n : Γ.Line} {A B : Γ.Point} :
+    h ⊂ n → h.source ∈ l → A ∈ h → B ∈ h →
+      h.source ≠ A → h.source ≠ B → A ∉ l → SameSide A B l := by
+  intro hhn hs_l hAh hBh hnSA hnSB hnAl
+  have hs_n : h.source ∈ n := hhn h.source (source_mem_ray h)
+  have hAn : A ∈ n := hhn A hAh
+  have hBn : B ∈ n := hhn B hBh
+  refine ⟨hnAl, ?_, ?_⟩
+  · intro hBl
+    have hΓ : IncidentAxioms Γ := inferInstance
+    have hln : l = n := hΓ.I₂ hnSB hs_l hBl hs_n hBn
+    have hAl' : A ∈ l := by simpa [hln] using hAn
+    exact hnAl hAl'
+  · intro hcross
+    rcases hcross with ⟨D, hDl, hADB⟩
+    have hnAB : A ≠ B := (neq3_of_bet hADB).2.2
+    have hcolAXB : Col A B D := col_right_comm.mp (col_of_bet hADB)
+    have hDn : D ∈ n := online_of_col hnAB hcolAXB hAn hBn
+    have hDS : D = h.source := by
+      by_cases hDS : D = h.source
+      · exact hDS
+      · have hln : l = n := by
+          have hΓ : IncidentAxioms Γ := inferInstance
+          exact hΓ.I₂ hDS hDl hs_l hDn hs_n
+        have hAl' : A ∈ l := by simpa [hln] using hAn
+        exact False.elim (hnAl hAl')
+    subst hDS
+    exact not_source_between_of_same_ray hAh hBh hnSA hADB
+
 theorem seg_cong_Euclid [hΓ₃ : CongruenceAxioms Γ] :
   ∀ {A B A' B' A'' B'' : Γ.Point},
     [A', B'] ≡ [A, B] → [A'', B''] ≡ [A, B] → [A', B'] ≡ [A'', B''] := by
   exact hΓ₃.III₂
+
+theorem seg_cong_refl [hΓ₁ : IncidentAxioms Γ] [hΓ₃ : CongruenceAxioms Γ] (A B : Γ.Point) :
+  [A, B] ≡ [A, B] := by
+  rcases exists_line_of_point A B with ⟨l, hAl, hBl⟩
+  rcases exists_not_online_point l with ⟨P, hnPl⟩
+  rcases exists_neq_point P with ⟨Q', hnPQ'⟩
+  let h : Γ.Ray := {
+    source := P
+    point := Q'
+    source_ne_point := hnPQ'
+  }
+  have hPs : h.source = P := by simp [h]
+  rcases exists_segCong_points_onray hAl hBl (Eq.symm hPs) with ⟨Q, hQh, hABPQ⟩
+  exact hΓ₃.III₂ hABPQ hABPQ
+
+theorem seg_cong_symm [IncidentAxioms Γ] [hΓ₃ : CongruenceAxioms Γ] :
+  [A, B] ≡ [A', B'] → [A', B'] ≡ [A, B] := by
+  intro hABA'B'
+  have hA'B'A'B' : [A', B'] ≡ [A', B'] := seg_cong_refl A' B'
+  exact hΓ₃.III₂ hA'B'A'B' hABA'B'
+
+theorem seg_cong_trans [IncidentAxioms Γ] [hΓ₃ : CongruenceAxioms Γ] {A'' B'' : Γ.Point} :
+  [A, B] ≡ [A', B'] → [A', B'] ≡ [A'', B''] → [A, B] ≡ [A'', B''] := by
+  intro hABA'B' hA'B'A''B''
+  apply seg_cong_symm at hA'B'A''B''
+  exact hΓ₃.III₂ hABA'B' hA'B'A''B''
+
+theorem point_angCong_of_ray_refl
+  [hΓ₃ : CongruenceAxioms Γ] {h k : Γ.Ray} (hs : sameSource h k)
+  {A A' B B' : Γ.Point} :
+    A ∈ h → A' ∈ h → B ∈ k → B' ∈ k → ∠ A h.source B ≡ ∠ A' h.source B' := by
+  intro hAh hA'h hBk hB'k
+  have hhk : ∠ (h, k) ≡ ∠ (h, k) := hΓ₃.III₄.1 h k hs
+  rw [angleCong_iff hs hs] at hhk
+  simpa [hs] using hhk hAh hA'h hBk hB'k
+
+theorem point_angCong_of_ray_swap
+  [hΓ₃ : CongruenceAxioms Γ] {h k : Γ.Ray} (hs : sameSource h k)
+  {A B A' B' : Γ.Point} :
+    A ∈ h → B ∈ k → A' ∈ k → B' ∈ h → ∠ A h.source B ≡ ∠ A' h.source B' := by
+  intro hAh hBk hA'k hB'h
+  have hhk : ∠ (h, k) ≡ ∠ (k, h) := hΓ₃.III₄.2.1 h k hs
+  rw [angleCong_iff hs hs.symm] at hhk
+  simpa [hs] using hhk hAh hA'k hBk hB'h
+
+theorem ray_in_halfPlane_of_point_on_ray
+  [IncidentAxioms Γ] [OrderAxioms Γ]
+  {h : Γ.Ray} {l n : Γ.Line} {α : Γ.Plane} {P : Γ.Point}
+  (hhn : h ⊂ n) (hsl : h.source ∈ l) (hlα : l ⊂ α)
+  (hPh : P ∈ h) (hnSP : h.source ≠ P) (hnPl : P ∉ l) :
+    h ⊂ ({ base := α, boundary := l, bound_in_base := hlα, point := P,
+      point_not_in_boundary := hnPl } : Γ.HalfPlane) := by
+  intro X hX
+  by_cases hSX : X = h.source
+  · exact Or.inl hSX
+  · right
+    change P ∉ l ∧ SameSide P X l
+    exact ⟨hnPl, sameSide_of_points_on_ray_wrt_transversal hhn hsl hPh hX hnSP hSX.symm hnPl⟩
+
+theorem not_mem_line_of_offline_point
+  [IncidentAxioms Γ] {A B C : Γ.Point} {l m : Γ.Line} :
+    A ≠ B → A ∈ l → B ∈ l → A ∈ m → C ∈ m → C ∉ l → B ∉ m := by
+  intro hnAB hAl hBl hAm hCm hnCl hBm
+  have hΓ : IncidentAxioms Γ := inferInstance
+  have hlm : l = m := hΓ.I₂ hnAB hAl hBl hAm hBm
+  exact hnCl (by simpa [hlm] using hCm)
+
+theorem exists_unique_segCong_point_onray
+  [hΓ₁ : IncidentAxioms Γ] [hΓ₂ : OrderAxioms Γ] [hΓ₃ : CongruenceAxioms Γ] :
+    ∀ {A B A'} {l : Γ.Line} {h : Γ.Ray},
+      A ∈ l → B ∈ l → A' = h.source →
+        ∃! B', B' ∈ h ∧ [A, B] ≡ [A', B'] := by
+  intro A B A' l h hAl hBl hA's
+  rcases exists_segCong_points_onray hAl hBl hA's with ⟨B', hB'h, hA'B'AB⟩
+  use B'
+  simp only
+  constructor
+  · exact ⟨hB'h, hA'B'AB⟩
+  · intro B'' ⟨hB''h, hA'B''AB⟩
+    by_cases hAB : A' = B'
+    · subst hAB
+      sorry
+    · by_contra hnB''B'
+      rcases exists_line_of_point A' B' with ⟨l', hA'l', hB'l'⟩
+      rcases exists_not_online_point l' with ⟨C', hnC'l'⟩
+      have hA'C'A'C' := seg_cong_refl A' C'
+      have hA'B'A'B'' : [A', B'] ≡ [A', B''] := by
+        apply seg_cong_symm at hA'B'AB
+        exact seg_cong_trans hA'B'AB hA'B''AB
+      /-
+      have hA'h : A' ∈ h := by
+        simp only [onRay, h.carrier_eq, RaySet, ne_eq, Set.mem_setOf_eq, SameSidePoint]
+        subst hA's
+        rw [col_right_comm]
+        constructor
+        · constructor
+          · exact col_of_eq rfl
+          · simp
+        · exact h.source_ne_point
+      -/
+      have hnA'C' : A' ≠ C' := by
+        intro hA'C'
+        subst hA'C'
+        contradiction
+      let k : Γ.Ray := {
+        source := A'
+        point := C'
+        source_ne_point := hnA'C'
+      }
+      have hC'k : C' ∈ k := by
+        simp only [onRay, RaySet, SameSidePoint, ne_eq, Set.mem_setOf_eq, or_true, and_true, k]
+        rw [col_left_rot]
+        exact ⟨col_of_eq rfl, hnA'C'⟩
+      have h_hs_ks : sameSource k h := by
+        simpa [sameSource, k] using hA's
+      have hC'A'B'C'A'B'' : ∠ C' A' B' ≡ ∠ C' A' B'' := by
+        have hhkhk : ∠ (k, h) ≡ ∠ (k, h) := hΓ₃.III₄.1 k h h_hs_ks
+        rw [angleCong_iff (h_s_hk := h_hs_ks) (h_s_h'k' := h_hs_ks)] at hhkhk
+        simp only [h_hs_ks, ← hA's] at hhkhk
+        exact hhkhk hC'k hC'k hB'h hB''h
+      have hA'C'B'A'C'B'' := cong_SAS hA'C'A'C' hA'B'A'B'' hC'A'B'C'A'B''
+      have hhl' : h ⊂ l' := by
+        subst hA's
+        exact ray_in_line_of_source_and_point hA'l' hB'l'
+      have hB''l' : B'' ∈ l' := hhl' B'' hB''h
+      rcases exists_line_of_point C' A' with ⟨n, hC'n, hA'n⟩
+      have hB'n : B' ∉ n := by
+        exact not_mem_line_of_offline_point hAB hA'l' hB'l' hA'n hC'n hnC'l'
+      rcases hΓ₁.I₄ A' B' C' with ⟨α, hA'α, hB'α, hC'α⟩
+      have hl'α : l' ⊂ α := hΓ₁.I₆ hAB hA'l' hB'l' hA'α hB'α
+      have hB''α : B'' ∈ α := hl'α B'' hB''l'
+      have hnα : n ⊂ α := hΓ₁.I₆ hnA'C' hC'n hA'n hC'α hA'α
+      by_cases hA'B'' : A' = B''
+      · subst hA'B''
+        sorry
+      · have hB''n : B'' ∉ n := by
+          exact not_mem_line_of_offline_point hA'B'' hA'l' hB''l' hA'n hC'n hnC'l'
+        have hnC'B' : C' ≠ B' := neq_of_online_and_not_online hB'l' hnC'l'
+        have hnC'B'' : C' ≠ B'' := neq_of_online_and_not_online hB''l' hnC'l'
+        let v : Γ.Ray := {
+          source := C'
+          point := B'
+          source_ne_point := hnC'B'
+        }
+        let w : Γ.Ray := {
+          source := C'
+          point := B''
+          source_ne_point := hnC'B''
+        }
+        have hA'v : A' ∈ v := by
+          simp only [onRay, RaySet, SameSidePoint, ne_eq, Set.mem_setOf_eq, or_true, and_true, v]
+          rw [col_right_comm]
+          exact ⟨col_of_eq rfl, hnC'B'⟩
+        have hB'v : B' ∈ v := by
+          simp only [onRay, RaySet, SameSidePoint, ne_eq, Set.mem_setOf_eq, or_true, and_true, v]
+          rw [col_left_rot]
+          exact ⟨col_of_eq rfl, hnC'B'⟩
+        have hA'w : A' ∈ w := by
+          simp only [onRay, RaySet, SameSidePoint, ne_eq, Set.mem_setOf_eq, or_true, and_true, w]
+          rw [col_right_comm]
+          exact ⟨col_of_eq rfl, hnC'B''⟩
+        have hB''w : B'' ∈ w := by
+          simp only [onRay, RaySet, SameSidePoint, ne_eq, Set.mem_setOf_eq, or_true, and_true, w]
+          rw [col_left_rot]
+          exact ⟨col_of_eq rfl, hnC'B''⟩
+        let α' : Γ.HalfPlane := {
+          base := α
+          boundary := n
+          bound_in_base := hnα
+          point := B'
+          point_not_in_boundary := hB'n
+        }
+        have hvα' : v ⊂ α' := by
+          exact ray_in_halfPlane_of_point_on_ray
+            (hhn := ray_in_line_of_source_and_point hC'n hB'v)
+            (hsl := hC'n) (hlα := hnα) (hPh := hB'v) (hnSP := hnC'B') (hnPl := hB'n)
+        have hwα' : w ⊂ α' := by
+          sorry
+        --have hrvw : ∠ (v, w) ...
+        sorry
+
 
 noncomputable instance SuppleAngle
   (Γ : Geometry) (a : Γ.Angle) [IncidentAxioms Γ] [OrderAxioms Γ] : Γ.Angle where
