@@ -1,13 +1,24 @@
-# Hilbert
+# Foundation of Geometry (Lean 4)
 
-## GitHub configuration
+This repository formalizes a Hilbert-style axiomatic foundation of geometry in Lean 4.
 
-To set up your new GitHub repository, follow these steps:
+## Current contents
 
-* Under your repository name, click **Settings**.
-* In the **Actions** section of the sidebar, click "General".
-* Check the box **Allow GitHub Actions to create and approve pull requests**.
-* Click the **Pages** section of the settings sidebar.
-* In the **Source** dropdown menu, select "GitHub Actions".
+- `Hilbert/Basic.lean`
+  - Core structure `Geometry` (points, lines, planes, incidence, betweenness, congruence).
+  - Incidence axioms (`IncidentAxioms`) and derived theorems.
+  - Order axioms (`OrderAxioms`) and derived theorems.
+- `Hilbert.lean`
+  - Top-level entry point importing `Hilbert.Basic`.
 
-After following the steps above, you can remove this section from the README file.
+## Build
+
+This project uses Lake. After installing Lean 4 and Lake:
+
+```bash
+lake build
+```
+
+## Goal
+
+The long-term goal is a mechanically checked development of foundational Euclidean geometry from explicit axioms, with theorems proved directly from those axioms.
